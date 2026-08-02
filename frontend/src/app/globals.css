@@ -1,0 +1,434 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* -----------------------------------------------------------------------
+ * DevFlow Enterprise — Design System Foundation
+ * -----------------------------------------------------------------------
+ * This file is the single source of truth for design tokens rendered as
+ * CSS custom properties. See /docs/design-system for full documentation.
+ *
+ * Structure:
+ *   1. Dark variant selector
+ *   2. @theme inline  -> semantic color + radius tokens (theme-reactive)
+ *   3. @theme         -> static tokens: typography, shadow, breakpoint, easing
+ *   4. :root          -> light theme raw values (default)
+ *   5. .dark           -> dark theme raw values (default app theme)
+ *   6. @layer base     -> element defaults, selection, scrollbars, focus
+ * ---------------------------------------------------------------------- */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Font families */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Core surfaces */
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-elevated: var(--elevated);
+  --color-elevated-foreground: var(--elevated-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Borders & dividers */
+  --color-border: var(--border);
+  --color-divider: var(--divider);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand / primary */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-muted: var(--primary-muted);
+
+  /* Secondary / neutral actions */
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-hover: var(--secondary-hover);
+
+  /* Accent (menu/list hover states) */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Muted */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Popover / overlay surfaces */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  /* Status colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-muted: var(--danger-muted);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-foreground: var(--text-primary);
+
+  /* Interactive states */
+  --color-disabled: var(--disabled);
+  --color-disabled-foreground: var(--disabled-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-selection: var(--selection);
+  --color-focus-ring: var(--focus-ring);
+
+  /* Data visualization */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Radius scale (derived from --radius base) */
+  --radius-xs: calc(var(--radius) * 0.5);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2.5);
+}
+
+@theme {
+  /* -----------------------------------------------------------------------
+   * Typography scale — semantic names, paired line-height / weight / tracking
+   * Base unit: 14px body (dense, data-oriented enterprise UI)
+   * -------------------------------------------------------------------- */
+  --text-display: 3rem; /* 48px */
+  --text-display--line-height: 3.5rem; /* 56px */
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+
+  --text-heading: 2rem; /* 32px */
+  --text-heading--line-height: 2.5rem; /* 40px */
+  --text-heading--letter-spacing: -0.015em;
+  --text-heading--font-weight: 700;
+
+  --text-title: 1.5rem; /* 24px */
+  --text-title--line-height: 2rem; /* 32px */
+  --text-title--letter-spacing: -0.01em;
+  --text-title--font-weight: 600;
+
+  --text-subtitle: 1.125rem; /* 18px */
+  --text-subtitle--line-height: 1.75rem; /* 28px */
+  --text-subtitle--letter-spacing: -0.005em;
+  --text-subtitle--font-weight: 600;
+
+  --text-body: 0.875rem; /* 14px */
+  --text-body--line-height: 1.375rem; /* 22px */
+  --text-body--font-weight: 400;
+
+  --text-body-strong: 0.875rem; /* 14px */
+  --text-body-strong--line-height: 1.375rem;
+  --text-body-strong--font-weight: 600;
+
+  --text-caption: 0.8125rem; /* 13px */
+  --text-caption--line-height: 1.25rem; /* 20px */
+  --text-caption--font-weight: 400;
+
+  --text-small: 0.75rem; /* 12px */
+  --text-small--line-height: 1rem; /* 16px */
+  --text-small--font-weight: 400;
+
+  --text-label: 0.8125rem; /* 13px */
+  --text-label--line-height: 1.25rem; /* 20px */
+  --text-label--font-weight: 500;
+
+  --text-button: 0.875rem; /* 14px */
+  --text-button--line-height: 1.25rem; /* 20px */
+  --text-button--font-weight: 500;
+
+  --text-code: 0.8125rem; /* 13px */
+  --text-code--line-height: 1.25rem; /* 20px */
+  --text-code--font-weight: 400;
+
+  /* -----------------------------------------------------------------------
+   * Shadow system — semantic elevation tiers (thin border + subtle shadow)
+   * -------------------------------------------------------------------- */
+  --shadow-none: none;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08), 0 1px 1px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.10), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.14), 0 4px 8px -4px rgb(0 0 0 / 0.08);
+  --shadow-overlay: 0 16px 32px -8px rgb(0 0 0 / 0.20), 0 6px 12px -6px rgb(0 0 0 / 0.12);
+  --shadow-modal: 0 24px 48px -12px rgb(0 0 0 / 0.32), 0 8px 16px -8px rgb(0 0 0 / 0.16);
+  --shadow-dropdown: 0 8px 16px -4px rgb(0 0 0 / 0.16), 0 2px 6px -2px rgb(0 0 0 / 0.10);
+
+  /* -----------------------------------------------------------------------
+   * Breakpoints — Tailwind defaults + an enterprise "wide desktop" tier
+   * -------------------------------------------------------------------- */
+  --breakpoint-xs: 22.5rem; /* 360px */
+  --breakpoint-sm: 40rem; /* 640px */
+  --breakpoint-md: 48rem; /* 768px */
+  --breakpoint-lg: 64rem; /* 1024px */
+  --breakpoint-xl: 80rem; /* 1280px */
+  --breakpoint-2xl: 96rem; /* 1536px */
+  --breakpoint-3xl: 90rem; /* 1440px — primary desktop design width */
+
+  /* -----------------------------------------------------------------------
+   * Motion easing curves (paired with Framer Motion tokens in
+   * src/design-system/tokens/motion.ts)
+   * -------------------------------------------------------------------- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* ===========================================================================
+ * LIGHT THEME (default :root values)
+ * ======================================================================== */
+:root {
+  --radius: 0.5rem;
+
+  /* Surfaces */
+  --background: #ffffff;
+  --surface: #f7f8fa;
+  --card: #ffffff;
+  --card-foreground: #12141a;
+  --elevated: #ffffff;
+  --elevated-foreground: #12141a;
+  --sidebar: #fafafb;
+  --sidebar-foreground: #23262d;
+  --sidebar-border: #e7e8ec;
+  --sidebar-accent: #f1f2f5;
+  --sidebar-accent-foreground: #12141a;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #4f46e5;
+
+  /* Borders */
+  --border: #e5e7eb;
+  --divider: #edeef1;
+  --input: #d9dbe1;
+  --ring: #4f46e5;
+
+  /* Brand */
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --primary-hover: #4338ca;
+  --primary-active: #3730a3;
+  --primary-muted: #eef0fd;
+
+  /* Secondary */
+  --secondary: #f1f2f5;
+  --secondary-foreground: #12141a;
+  --secondary-hover: #e5e7eb;
+
+  /* Accent */
+  --accent: #f1f2f5;
+  --accent-foreground: #12141a;
+
+  /* Muted */
+  --muted: #f7f8fa;
+  --muted-foreground: #6b7078;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #12141a;
+
+  /* Status */
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --success-muted: #eefbf1;
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fef6e7;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+  --danger-muted: #fef1f1;
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --info-muted: #eef4fe;
+
+  /* Text */
+  --text-primary: #12141a;
+  --text-secondary: #4b4f58;
+  --text-muted: #8a8f98;
+
+  /* Interactive states */
+  --disabled: #c6c9d1;
+  --disabled-foreground: #9a9ea6;
+  --link: #4f46e5;
+  --link-hover: #4338ca;
+  --selection: color-mix(in srgb, #4f46e5 16%, transparent);
+  --focus-ring: #4f46e5;
+
+  /* Charts */
+  --chart-1: #4f46e5;
+  --chart-2: #0ea5e9;
+  --chart-3: #16a34a;
+  --chart-4: #d97706;
+  --chart-5: #db2777;
+}
+
+/* ===========================================================================
+ * DARK THEME (default application theme)
+ * ======================================================================== */
+.dark {
+  --radius: 0.5rem;
+
+  /* Surfaces */
+  --background: #08090b;
+  --surface: #0f1013;
+  --card: #131418;
+  --card-foreground: #f2f3f5;
+  --elevated: #191a1f;
+  --elevated-foreground: #f2f3f5;
+  --sidebar: #0b0c0f;
+  --sidebar-foreground: #e2e3e7;
+  --sidebar-border: #202127;
+  --sidebar-accent: #1a1b21;
+  --sidebar-accent-foreground: #f2f3f5;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #6366f1;
+
+  /* Borders */
+  --border: #212227;
+  --divider: #1a1b1f;
+  --input: #26272e;
+  --ring: #6366f1;
+
+  /* Brand */
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --primary-hover: #7678f5;
+  --primary-active: #4f52d6;
+  --primary-muted: #1a1b2e;
+
+  /* Secondary */
+  --secondary: #1c1d23;
+  --secondary-foreground: #e5e6ea;
+  --secondary-hover: #26272e;
+
+  /* Accent */
+  --accent: #1c1d23;
+  --accent-foreground: #f2f3f5;
+
+  /* Muted */
+  --muted: #14151a;
+  --muted-foreground: #9a9ea6;
+
+  /* Popover */
+  --popover: #191a1f;
+  --popover-foreground: #f2f3f5;
+
+  /* Status */
+  --success: #22c55e;
+  --success-foreground: #052e16;
+  --success-muted: #112318;
+  --warning: #f59e0b;
+  --warning-foreground: #2b1a02;
+  --warning-muted: #26190a;
+  --danger: #f04747;
+  --danger-foreground: #2b0808;
+  --danger-muted: #2a1414;
+  --info: #3b82f6;
+  --info-foreground: #05193b;
+  --info-muted: #101c2e;
+
+  /* Text */
+  --text-primary: #f5f6f7;
+  --text-secondary: #a1a5ad;
+  --text-muted: #6b7078;
+
+  /* Interactive states */
+  --disabled: #35363c;
+  --disabled-foreground: #5c5f66;
+  --link: #818cf8;
+  --link-hover: #a5b4fc;
+  --selection: color-mix(in srgb, #6366f1 30%, transparent);
+  --focus-ring: #6366f1;
+
+  /* Charts */
+  --chart-1: #818cf8;
+  --chart-2: #38bdf8;
+  --chart-3: #4ade80;
+  --chart-4: #fbbf24;
+  --chart-5: #f472b6;
+}
+
+/* ===========================================================================
+ * BASE LAYER
+ * ======================================================================== */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply font-sans scroll-smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-text-primary text-body antialiased;
+    font-feature-settings: "cv11", "ss01";
+    font-optical-sizing: auto;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    @apply font-mono text-code;
+  }
+
+  ::selection {
+    background-color: var(--selection);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+    background-clip: content-box;
+  }
+}
