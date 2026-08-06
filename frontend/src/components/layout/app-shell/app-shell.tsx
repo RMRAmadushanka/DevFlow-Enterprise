@@ -36,6 +36,7 @@ export interface AppShellProps {
   onSelectProject?: (projectId: string) => void;
   onCreateWorkspace?: () => void;
   onWorkspaceSettingsClick?: () => void;
+  renderWorkspaceSwitcher?: (ctx: { collapsed: boolean }) => React.ReactNode;
 
   user: AppUser;
   onProfileClick?: () => void;
@@ -106,6 +107,7 @@ export function AppShell({
   onSelectProject,
   onCreateWorkspace,
   onWorkspaceSettingsClick,
+  renderWorkspaceSwitcher,
   user,
   onProfileClick,
   onAccountSettingsClick,
@@ -185,6 +187,7 @@ export function AppShell({
           onSelectProject={onSelectProject}
           onCreateWorkspace={onCreateWorkspace}
           onWorkspaceSettingsClick={onWorkspaceSettingsClick}
+          renderWorkspaceSwitcher={renderWorkspaceSwitcher}
           user={user}
           onProfileClick={onProfileClick}
           onAccountSettingsClick={onAccountSettingsClick}

@@ -11,14 +11,16 @@ import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { queryConfig } from "@/config/query";
 
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000,
-        refetchOnWindowFocus: false,
-        retry: 1,
+        staleTime: queryConfig.staleTimeMs,
+        gcTime: queryConfig.gcTimeMs,
+        refetchOnWindowFocus: queryConfig.refetchOnWindowFocus,
+        retry: queryConfig.retry,
       },
     },
   });

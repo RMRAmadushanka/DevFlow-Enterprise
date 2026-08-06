@@ -1,0 +1,3 @@
+# Backend architecture design docs (local only)
+docs/backend-architecture/**/*.md
+docs/backend-architecture/*.md

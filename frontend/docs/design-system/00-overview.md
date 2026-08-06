@@ -12,6 +12,14 @@ tokens visually — not a product page).
 
 ## Contents
 
+**Start here (governance set):** [introduction.md](./introduction.md) ·
+[principles.md](./principles.md) · [colors.md](./colors.md) ·
+[typography.md](./typography.md) · [spacing.md](./spacing.md) ·
+[accessibility.md](./accessibility.md) · [responsive.md](./responsive.md) ·
+[animation.md](./animation.md)
+
+**Deep dives:**
+
 1. [Design Philosophy](./01-design-philosophy.md)
 2. [Design Tokens](./02-design-tokens.md)
 3. [Theme Architecture](./03-theme-architecture.md)
@@ -23,6 +31,8 @@ tokens visually — not a product page).
 9. [Responsive Rules](./09-responsive-rules.md)
 10. [Motion Guidelines](./10-motion-guidelines.md)
 11. [Usage Guide](./11-usage-guide.md)
+
+**Storybook:** `npm run storybook` · Docs hub: [../README.md](../README.md)
 
 ## Stack
 

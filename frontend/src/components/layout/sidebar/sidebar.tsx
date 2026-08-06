@@ -35,6 +35,8 @@ export interface SidebarProps {
   onSelectProject?: (projectId: string) => void;
   onCreateWorkspace?: () => void;
   onWorkspaceSettingsClick?: () => void;
+  /** When provided, replaces the default WorkspaceSwitcher (e.g. feature OrganizationSwitcher). */
+  renderWorkspaceSwitcher?: (ctx: { collapsed: boolean }) => React.ReactNode;
 
   user: AppUser;
   onProfileClick?: () => void;
@@ -67,6 +69,7 @@ export function Sidebar({
   onSelectProject,
   onCreateWorkspace,
   onWorkspaceSettingsClick,
+  renderWorkspaceSwitcher,
   user,
   onProfileClick,
   onAccountSettingsClick,
@@ -84,17 +87,21 @@ export function Sidebar({
         productName={productName}
         homeHref={homeHref}
       />
-      <WorkspaceSwitcher
-        organizations={organizations}
-        projects={projects}
-        activeOrganizationId={activeOrganizationId}
-        activeProjectId={activeProjectId}
-        collapsed={isCollapsed}
-        onSelectOrganization={onSelectOrganization}
-        onSelectProject={onSelectProject}
-        onCreateWorkspace={onCreateWorkspace}
-        onSettingsClick={onWorkspaceSettingsClick}
-      />
+      {renderWorkspaceSwitcher ? (
+        renderWorkspaceSwitcher({ collapsed: isCollapsed })
+      ) : (
+        <WorkspaceSwitcher
+          organizations={organizations}
+          projects={projects}
+          activeOrganizationId={activeOrganizationId}
+          activeProjectId={activeProjectId}
+          collapsed={isCollapsed}
+          onSelectOrganization={onSelectOrganization}
+          onSelectProject={onSelectProject}
+          onCreateWorkspace={onCreateWorkspace}
+          onSettingsClick={onWorkspaceSettingsClick}
+        />
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         <SidebarNav groups={navGroups} collapsed={isCollapsed} onNavigate={closeOnNavigate} />
       </div>
