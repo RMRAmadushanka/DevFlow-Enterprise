@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { queryConfig } from "@/config/query";
+import { KeycloakAuthProvider } from "@/lib/auth/keycloak-auth-provider";
 
 function createQueryClient() {
   return new QueryClient({
@@ -31,10 +32,12 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {children}
-        <Toaster />
-      </TooltipProvider>
+      <KeycloakAuthProvider>
+        <TooltipProvider>
+          {children}
+          <Toaster />
+        </TooltipProvider>
+      </KeycloakAuthProvider>
     </QueryClientProvider>
   );
 }

@@ -64,9 +64,20 @@ export function toOrganizationErrorMessage(error: unknown): string {
 export function mapOrganizationApiError(error: unknown): Error {
   if (error instanceof ApiError) {
     if (error.isNetwork) return new OrganizationNetworkError();
+    if (error.isUnauthorized) {
+      return new OrganizationPermissionError("Sign in required");
+    }
     if (error.isForbidden) return new OrganizationPermissionError(error.message);
     if (error.status === 404) return new OrganizationNotFoundError(error.message);
-    if (error.status === 422) return new OrganizationValidationError(error.message);
+    if (error.status === 409) {
+      return new OrganizationValidationError(error.message || "Conflict with existing resource");
+    }
+    if (error.status === 422 || error.status === 400) {
+      return new OrganizationValidationError(error.message);
+    }
+    if (error.status >= 500) {
+      return new OrganizationNetworkError(error.message || "Server error. Please try again.");
+    }
     return error;
   }
   return error instanceof Error ? error : new Error(String(error));

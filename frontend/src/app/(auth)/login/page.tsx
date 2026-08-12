@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 
 import { AuthLayout, LoginForm } from "@/features/auth";
@@ -19,7 +20,9 @@ export default function LoginPage() {
         </>
       }
     >
-      <LoginForm />
+      <React.Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
+        <LoginForm />
+      </React.Suspense>
     </AuthLayout>
   );
 }

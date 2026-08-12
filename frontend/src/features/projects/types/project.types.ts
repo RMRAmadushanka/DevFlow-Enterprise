@@ -177,6 +177,7 @@ export interface CreateProjectPayload {
 
 export type UpdateProjectPayload = Partial<CreateProjectPayload> & {
   status?: ProjectStatus;
+  health?: ProjectHealth;
 };
 
 export interface ProjectListResult {

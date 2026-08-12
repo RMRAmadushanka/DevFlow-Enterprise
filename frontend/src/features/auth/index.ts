@@ -31,9 +31,11 @@ export {
 export { useLogin } from "./hooks/use-login";
 export { useRegister } from "./hooks/use-register";
 export { useLogout } from "./hooks/use-logout";
+export { useAuth } from "./hooks/use-auth";
 export { usePasswordReset } from "./hooks/use-password-reset";
 export { useEmailVerification } from "./hooks/use-email-verification";
 export { useSessionBootstrap, useAuthUser, useIsAuthenticated } from "./hooks/use-session";
+export { useUserSearch } from "./hooks/use-user-search";
 export {
   useUpdateProfile,
   useUpdatePreferences,
@@ -49,7 +51,8 @@ export {
   useUpdateNotificationPreferences,
 } from "./hooks/use-account";
 
-export { authService } from "./services/auth.service";
+export { authService, isUserApiEnabled, userApiService } from "./services/auth.service";
+export type { UserSearchResult } from "./services/user-api.mappers";
 export { useAuthStore } from "./store/auth.store";
 export * from "./schemas/auth.schema";
 export * from "./types/auth.types";

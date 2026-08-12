@@ -1,3 +1,7 @@
 # Backend architecture design docs (local only)
 docs/backend-architecture/**/*.md
 docs/backend-architecture/*.md
+
+# Backend local secrets / build (also covered by backend/.gitignore)
+backend/.env
+backend/**/target/

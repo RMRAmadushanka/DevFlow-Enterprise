@@ -1,0 +1,10 @@
+package com.devflow.organization.events;
+
+public enum OrganizationEventType {
+    ORGANIZATION_CREATED,
+    ORGANIZATION_UPDATED,
+    ORGANIZATION_ARCHIVED,
+    ORGANIZATION_MEMBER_ADDED,
+    ORGANIZATION_MEMBER_REMOVED,
+    ORGANIZATION_ROLE_CHANGED
+}

@@ -1,0 +1,18 @@
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    redis:
+      host: redis
+  kafka:
+    bootstrap-servers: kafka:29092
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/devflow
+          jwk-set-uri: http://keycloak:8080/realms/devflow/protocol/openid-connect/certs
+  datasource:
+    url: jdbc:postgresql://postgres:5432/devflow_deployment
+

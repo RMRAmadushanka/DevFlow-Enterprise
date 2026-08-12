@@ -1,0 +1,154 @@
+{
+  "realm": "devflow",
+  "enabled": true,
+  "displayName": "DevFlow",
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "verifyEmail": true,
+  "rememberMe": true,
+  "internationalizationEnabled": false,
+  "passwordPolicy": "length(12) and notUsername and notEmail and passwordHistory(3)",
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "clientSessionIdleTimeout": 1800,
+  "clientSessionMaxLifespan": 28800,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Default authenticated application user (identity-level)"
+      },
+      {
+        "name": "PLATFORM_ADMIN",
+        "description": "Platform administrator (identity-level; maps with SUPER_ADMIN for backend)"
+      },
+      {
+        "name": "SUPER_ADMIN",
+        "description": "Platform super administrator (legacy alias used by services)"
+      },
+      {
+        "name": "ADMIN",
+        "description": "Platform administrator authority used by services"
+      },
+      {
+        "name": "MANAGER",
+        "description": "Platform manager authority (UI / coarse JWT mapping only)"
+      },
+      {
+        "name": "DEVELOPER",
+        "description": "Default contributor authority (UI / coarse JWT mapping only)"
+      },
+      {
+        "name": "QA",
+        "description": "Quality assurance authority (UI / coarse JWT mapping only)"
+      },
+      {
+        "name": "VIEWER",
+        "description": "Read-oriented authority (UI / coarse JWT mapping only)"
+      },
+      {
+        "name": "GUEST",
+        "description": "Limited guest authority (UI / coarse JWT mapping only)"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "platform-admins",
+      "path": "/platform-admins",
+      "realmRoles": ["PLATFORM_ADMIN", "SUPER_ADMIN", "ADMIN"]
+    },
+    {
+      "name": "support",
+      "path": "/support",
+      "realmRoles": ["VIEWER"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "devflow-web",
+      "name": "DevFlow Next.js Web",
+      "description": "Public SPA - OpenID Connect Authorization Code + PKCE S256. No client secret.",
+      "enabled": true,
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "rootUrl": "http://localhost:3000",
+      "baseUrl": "/",
+      "adminUrl": "http://localhost:3000",
+      "redirectUris": [
+        "http://localhost:3000/auth/callback",
+        "http://localhost:3000/silent-check-sso.html",
+        "http://localhost:3000/login",
+        "http://localhost:3000/register",
+        "http://localhost:3000/forgot-password",
+        "http://localhost:3000/reset-password",
+        "http://localhost:3000/verify-email"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/##http://localhost:3000/login",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-devflow-web",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "devflow-web",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "devflow-gateway",
+      "name": "DevFlow API Gateway / Backend",
+      "description": "Confidential client for service-to-Keycloak Admin API (not the browser). Set secret via Admin Console or env — do not commit production secrets.",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    }
+  ]
+}

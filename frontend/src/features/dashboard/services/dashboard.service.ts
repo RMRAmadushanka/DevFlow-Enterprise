@@ -1,3 +1,4 @@
+import { isLiveBackendMode, rejectStubMutation } from "@/lib/api/live-api";
 import {
   MOCK_FILTER_OPTIONS,
   MOCK_SNAPSHOT,
@@ -10,6 +11,31 @@ import type {
 import { DashboardNetworkError } from "../utils/errors";
 
 const delay = (ms = 400) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const EMPTY_SNAPSHOT: DashboardSnapshot = {
+  metrics: [],
+  projects: [],
+  projectStatus: [],
+  activity: [],
+  deployments: [],
+  deploymentTrend: [],
+  sprint: null,
+  burndown: [],
+  workload: [],
+  systemHealth: [],
+};
+
+const EMPTY_FILTER_OPTIONS: DashboardFilterOptions = {
+  organizations: [],
+  teams: [],
+  projects: [],
+  environments: [
+    { value: "production", label: "Production" },
+    { value: "staging", label: "Staging" },
+    { value: "preview", label: "Preview" },
+    { value: "development", label: "Development" },
+  ],
+};
 
 function cloneSnapshot(): DashboardSnapshot {
   return structuredClone(MOCK_SNAPSHOT);
@@ -58,11 +84,17 @@ function applyFilters(snapshot: DashboardSnapshot, filters: DashboardFilters): D
 
 export const dashboardService = {
   async getFilterOptions(): Promise<DashboardFilterOptions> {
+    if (isLiveBackendMode()) {
+      return structuredClone(EMPTY_FILTER_OPTIONS);
+    }
     await delay(200);
     return structuredClone(MOCK_FILTER_OPTIONS);
   },
 
   async getSnapshot(filters: DashboardFilters): Promise<DashboardSnapshot> {
+    if (isLiveBackendMode()) {
+      return structuredClone(EMPTY_SNAPSHOT);
+    }
     await delay();
     if (filters.organizationId === "org_error") {
       throw new DashboardNetworkError();
@@ -71,6 +103,9 @@ export const dashboardService = {
   },
 
   async exportReport(format: "pdf" | "csv" | "excel"): Promise<{ format: string; filename: string }> {
+    if (isLiveBackendMode()) {
+      rejectStubMutation("Dashboard export");
+    }
     await delay(600);
     return {
       format,

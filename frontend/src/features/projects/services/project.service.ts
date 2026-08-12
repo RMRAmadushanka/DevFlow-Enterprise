@@ -14,6 +14,7 @@ import {
   ProjectPermissionError,
   ProjectValidationError,
 } from "../utils/errors";
+import { isProjectApiEnabled, projectApiService } from "./project-api.service";
 
 const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -488,7 +489,8 @@ function toDetail(project: Project): ProjectDetail {
   };
 }
 
-export const projectService = {
+/** In-memory mock (default). Set NEXT_PUBLIC_USE_PROJECT_API=true to use Phase 4 project-service. */
+const mockProjectService = {
   async list(params: {
     filters: ProjectFilters;
     sort: ProjectSortField;
@@ -636,4 +638,113 @@ export const projectService = {
     projects = projects.filter((item) => item.id !== id);
     favorites.delete(id);
   },
+
+  async listMembers(projectId: string) {
+    await delay(150);
+    return clone(toDetail(requireProject(projectId)).members);
+  },
+
+  async listActivity(
+    projectId: string,
+    _params?: { activityType?: string; page?: number; size?: number }
+  ) {
+    await delay(150);
+    const items = clone(toDetail(requireProject(projectId)).activity);
+    return { items, total: items.length };
+  },
+
+  async updateStatus(id: string, status: Project["status"]) {
+    return this.update(id, { status });
+  },
+
+  async updateHealth(id: string, health: Project["health"]) {
+    await delay();
+    const project = requireProject(id);
+    project.health = health;
+    project.updatedAt = new Date().toISOString();
+    return clone(toDetail(project));
+  },
+
+  async getSettings(projectId: string) {
+    await delay(100);
+    const project = requireProject(projectId);
+    return {
+      id: `settings_${projectId}`,
+      projectId,
+      defaultVisibility: "PRIVATE" as const,
+      allowMemberInvites: true,
+      allowGuestAccess: false,
+      timezone: project.timezone,
+      defaultProjectView: "OVERVIEW" as const,
+    };
+  },
+
+  async updateSettings(
+    projectId: string,
+    body: { timezone?: string | null }
+  ) {
+    await delay();
+    const project = requireProject(projectId);
+    if (body.timezone != null) project.timezone = body.timezone;
+    return this.getSettings(projectId);
+  },
+
+  async listTags(projectId: string) {
+    await delay(100);
+    const project = requireProject(projectId);
+    return project.tags.map((name, index) => ({
+      id: `tag_${projectId}_${index}`,
+      projectId,
+      name,
+      color: "#2563EB",
+    }));
+  },
+
+  async addMember(
+    projectId: string,
+    input: { userId: string; role: ProjectMember["role"] }
+  ): Promise<ProjectMember> {
+    await delay();
+    const detail = toDetail(requireProject(projectId));
+    const member: ProjectMember = {
+      id: `mem_${Date.now().toString(36)}`,
+      projectId,
+      userId: input.userId,
+      name: `User ${input.userId.slice(0, 8)}`,
+      email: "",
+      role: input.role,
+      capacity: 80,
+      lastActiveAt: new Date().toISOString(),
+    };
+    detail.members.push(member);
+    return clone(member);
+  },
+
+  async removeMember(projectId: string, userId: string): Promise<void> {
+    await delay();
+    requireProject(projectId);
+    // Mock detail is derived; no persistent member mutation beyond seed data.
+    void userId;
+  },
+
+  async updateMember(
+    projectId: string,
+    userId: string,
+    input: { role?: ProjectMember["role"] }
+  ): Promise<ProjectMember> {
+    await delay();
+    const members = toDetail(requireProject(projectId)).members;
+    const member = members.find((m) => m.userId === userId);
+    if (!member) throw new ProjectNotFoundError("Member not found");
+    if (input.role) member.role = input.role;
+    return clone(member);
+  },
 };
+
+export const projectService = new Proxy(mockProjectService, {
+  get(target, prop, receiver) {
+    const api = isProjectApiEnabled() ? projectApiService : target;
+    const value = Reflect.get(api, prop, receiver);
+    return typeof value === "function" ? value.bind(api) : value;
+  },
+});

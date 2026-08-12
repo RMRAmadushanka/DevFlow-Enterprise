@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { routes } from "@/config/routes";
 import { toast } from "@/components/feedback/toast";
+import { isKeycloakEnabled } from "@/lib/auth/keycloak";
 
 import { authKeys } from "../constants/auth.constants";
 import { authService } from "../services/auth.service";
@@ -21,8 +22,13 @@ export function useLogout() {
     onSuccess: async () => {
       logoutStore();
       await queryClient.removeQueries({ queryKey: authKeys.all });
+      await queryClient.clear();
       toast.success("Signed out");
-      router.replace(routes.auth.login);
+
+      // Keycloak logout redirects via the adapter; mock returns here.
+      if (!isKeycloakEnabled()) {
+        router.replace(routes.auth.login);
+      }
     },
   });
 

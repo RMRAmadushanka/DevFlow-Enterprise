@@ -32,6 +32,7 @@ export { ProjectAnalytics as ProjectAnalyticsView } from "./components/project-a
 export { ProjectArchiveModal } from "./components/project-archive-modal";
 export { DeleteProjectModal } from "./components/delete-project-modal";
 export { TransferOwnershipModal } from "./components/transfer-ownership-modal";
+export { InviteProjectMemberModal } from "./components/invite-project-member-modal";
 export { DuplicateProjectModal } from "./components/duplicate-project-modal";
 export {
   ProjectCardSkeleton,
@@ -52,7 +53,16 @@ export {
   useDuplicateProject,
   useTransferProjectOwnership,
   useToggleFavorite,
+  useProjectMembers,
+  useProjectActivity,
+  useRestoreProject,
+  useUpdateProjectStatus,
+  useUpdateProjectHealth,
+  useAddProjectMember,
+  useRemoveProjectMember,
 } from "./hooks/use-projects";
+
+export { isProjectApiEnabled } from "./services/project-api.service";
 
 export { projectService } from "./services/project.service";
 export { useProjectStore } from "./store/project.store";

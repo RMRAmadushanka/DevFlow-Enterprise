@@ -62,6 +62,7 @@ export {
 
 export { organizationService } from "./services/organization.service";
 export { memberService } from "./services/member.service";
+export { isOrganizationApiEnabled } from "./services/organization-api.service";
 export { useOrganizationStore } from "./store/organization.store";
 
 export * from "./schemas/organization.schema";

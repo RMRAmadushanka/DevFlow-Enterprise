@@ -19,11 +19,12 @@ import type {
 import type { PermissionMatrixState } from "../types/member.types";
 import { toOrganizationErrorMessage } from "../utils/errors";
 
-export function useOrganizations(params?: { q?: string }) {
+export function useOrganizations(params?: { q?: string; enabled?: boolean }) {
   const setOrganizations = useOrganizationStore((s) => s.setOrganizations);
   const query = useQuery({
     queryKey: organizationKeys.list(params),
     queryFn: () => organizationService.list(params),
+    enabled: params?.enabled ?? true,
   });
 
   React.useEffect(() => {

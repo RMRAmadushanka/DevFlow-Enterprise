@@ -8,16 +8,16 @@ import { Building2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell/app-shell";
 import { PermissionProvider } from "@/lib/permissions";
 import { routes } from "@/config/routes";
-import { sampleNotifications, sampleProjects } from "@/components/layout/sample-data";
 import { FeatureEmptyState } from "@/components/architecture/empty";
 import { Button } from "@/components/ui/button";
 import { defaultNavGroups, defaultFooterNavItems } from "@/components/layout/sidebar/nav-config";
 import { OrganizationSwitcher, useOrganizations, useOrganizationStore } from "@/features/organization";
+import { useProjects } from "@/features/projects";
 
 import { useLogout } from "../hooks/use-logout";
 import { useSessionBootstrap } from "../hooks/use-session";
 import { useAuthStore } from "../store/auth.store";
-import { ProfileSkeleton } from "./skeletons";
+import { useKeycloakAuthInit, AuthLoading } from "@/lib/auth/keycloak-auth-provider";
 
 export interface AuthenticatedShellProps {
   children: React.ReactNode;
@@ -30,20 +30,34 @@ export interface AuthenticatedShellProps {
 function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { initStatus } = useKeycloakAuthInit();
   const { isLoading, isFetched } = useSessionBootstrap();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
   const permissions = useAuthStore((s) => s.permissions);
   const { logout, isPending } = useLogout();
-  const { data: organizations = [] } = useOrganizations();
+  const { data: organizations = [] } = useOrganizations({
+    enabled: status === "authenticated",
+  });
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId);
   const switchOrganization = useOrganizationStore((s) => s.switchOrganization);
+  const sessionOrganizationId = useAuthStore((s) => s.organizationId);
+  const { data: projectsResult } = useProjects({
+    enabled: status === "authenticated",
+  });
 
   const activeOrganizationId =
-    currentOrganizationId ?? organizations[0]?.id ?? "org_demo";
+    currentOrganizationId ?? organizations[0]?.id ?? sessionOrganizationId ?? "";
 
-  const orgProjects = sampleProjects.filter(
-    (project) => project.organizationId === activeOrganizationId
+  const shellProjects = React.useMemo(
+    () =>
+      (projectsResult?.items ?? []).map((project) => ({
+        id: project.id,
+        name: project.name,
+        organizationId: project.organizationId,
+        meta: project.key,
+      })),
+    [projectsResult?.items]
   );
 
   const navGroups = React.useMemo(() => {
@@ -86,17 +100,21 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   }, [isFetched, status, router, pathname]);
 
   React.useEffect(() => {
-    if (!currentOrganizationId && organizations[0]) {
-      switchOrganization(organizations[0].id);
-    }
-  }, [currentOrganizationId, organizations, switchOrganization]);
+    if (currentOrganizationId) return;
+    const preferred =
+      (sessionOrganizationId &&
+        organizations.find((org) => org.id === sessionOrganizationId)?.id) ||
+      organizations[0]?.id;
+    if (preferred) switchOrganization(preferred);
+  }, [
+    currentOrganizationId,
+    organizations,
+    sessionOrganizationId,
+    switchOrganization,
+  ]);
 
-  if (isLoading || status === "unknown") {
-    return (
-      <div className="p-6">
-        <ProfileSkeleton />
-      </div>
-    );
+  if (initStatus === "initializing" || isLoading || status === "unknown") {
+    return <AuthLoading />;
   }
 
   if (!user) {
@@ -121,9 +139,9 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           imageUrl: org.logoUrl,
           meta: org.myRole,
         }))}
-        projects={orgProjects.length > 0 ? orgProjects : sampleProjects}
+        projects={shellProjects}
         activeOrganizationId={activeOrganizationId}
-        activeProjectId={orgProjects[0]?.id ?? sampleProjects[0]?.id}
+        activeProjectId={shellProjects[0]?.id}
         onSelectOrganization={(id) => {
           switchOrganization(id);
           router.push(routes.app.organization(id));
@@ -146,7 +164,7 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           { label: "Workspace" },
           { label: pathname.split("/").filter(Boolean).at(-1) ?? "Home" },
         ]}
-        notifications={sampleNotifications}
+        notifications={[]}
         onProfileClick={() => router.push(routes.app.profile)}
         onAccountSettingsClick={() => router.push(routes.app.account.settings)}
         onLogout={() => {

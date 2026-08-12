@@ -10,8 +10,31 @@ import type {
 import { makeSeries } from "../utils/format";
 import { alertsService } from "./alerts.service";
 import { metricsService } from "./metrics.service";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 240) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function emptyOverview(): MonitoringOverview {
+  return {
+    system: {
+      overall: "healthy",
+      availability: 0,
+      cpu: 0,
+      memory: 0,
+      disk: 0,
+      networkMbps: 0,
+      databaseStatus: "unknown",
+      apiStatus: "unknown",
+      lastUpdated: new Date().toISOString(),
+    },
+    services: [],
+    metrics: [],
+    alerts: [],
+    incidents: [],
+    errors: [],
+    alertSummary: { critical: 0, high: 0, medium: 0, low: 0, active: 0 },
+  };
+}
 
 function systemHealth(): SystemHealth {
   return {
@@ -104,6 +127,9 @@ function matchesService<T extends { service?: ServiceKey }>(
 
 export const monitoringService = {
   async getOverview(filters: MonitoringFilters): Promise<MonitoringOverview> {
+    if (isLiveBackendMode()) {
+      return emptyOverview();
+    }
     await delay();
     const [metrics, alerts, incidents] = await Promise.all([
       metricsService.list(filters),
@@ -140,6 +166,7 @@ export const monitoringService = {
   },
 
   async listServices(filters: MonitoringFilters): Promise<ServiceHealth[]> {
+    if (isLiveBackendMode()) return [];
     await delay(180);
     return services().filter(
       (s) => filters.service === "all" || s.key === filters.service
@@ -147,6 +174,7 @@ export const monitoringService = {
   },
 
   async listErrors(filters: MonitoringFilters): Promise<TrackedError[]> {
+    if (isLiveBackendMode()) return [];
     await delay(200);
     return errors.filter((e) => {
       if (!matchesService(e, filters)) return false;
@@ -159,11 +187,13 @@ export const monitoringService = {
   },
 
   async getError(id: string): Promise<TrackedError | undefined> {
+    if (isLiveBackendMode()) return undefined;
     await delay(120);
     return errors.find((e) => e.id === id);
   },
 
   async errorTrend(): Promise<Array<{ label: string; value: number }>> {
+    if (isLiveBackendMode()) return [];
     await delay(120);
     return makeSeries(40, 18);
   },

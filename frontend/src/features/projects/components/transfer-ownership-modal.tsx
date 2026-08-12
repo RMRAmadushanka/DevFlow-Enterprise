@@ -78,8 +78,9 @@ function TransferOwnershipModal({
             <SelectField
               label="New owner"
               options={candidates.map((member) => ({
-                value: member.id,
-                label: `${member.name} (${member.email})`,
+                // Backend transfer expects application userId
+                value: member.userId,
+                label: `${member.name}${member.email ? ` (${member.email})` : ""}`,
               }))}
               value={field.value || null}
               onValueChange={(value) => field.onChange(value ?? "")}

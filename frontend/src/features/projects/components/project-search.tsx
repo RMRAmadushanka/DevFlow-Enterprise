@@ -14,8 +14,9 @@ function ProjectSearch({ className }: ProjectSearchProps) {
 
   return (
     <SearchInput
-      value={q}
-      onChange={setSearch}
+      defaultValue={q}
+      onSearch={setSearch}
+      debounceMs={300}
       placeholder="Search by name, owner, repository, tags…"
       label="Search projects"
       className={className}

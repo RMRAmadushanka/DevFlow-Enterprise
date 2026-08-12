@@ -11,6 +11,8 @@ import type {
 } from "../types/sprint.types";
 import { remainingDays } from "../utils/dates";
 import { SprintNotFoundError, SprintValidationError } from "../utils/errors";
+import { createStubAwareService } from "@/lib/api/stub-service";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 280) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -140,7 +142,7 @@ function seedSprints(): Sprint[] {
   ];
 }
 
-let sprints = seedSprints();
+let sprints = isLiveBackendMode() ? [] : seedSprints();
 let sequence = 30;
 
 function toDetail(sprint: Sprint): SprintDetail {
@@ -299,7 +301,7 @@ function sortItems(items: Sprint[], sort: SprintSortField): Sprint[] {
   return copy;
 }
 
-export const sprintService = {
+const mockSprintService = {
   async list(params: {
     filters?: Partial<SprintFilters>;
     sort?: SprintSortField;
@@ -542,3 +544,10 @@ export const sprintService = {
       }));
   },
 };
+
+export const sprintService = createStubAwareService("Sprints", mockSprintService, [
+  "list",
+  "getById",
+  "planning",
+  "velocityHistory",
+]);

@@ -9,7 +9,17 @@ import { DEMO_CREDENTIALS } from "../../constants/auth.constants";
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace, push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
+
+vi.mock("@/lib/auth/keycloak", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth/keycloak")>("@/lib/auth/keycloak");
+  return {
+    ...actual,
+    isOidcEnabled: () => false,
+    isKeycloakEnabled: () => false,
+  };
+});
 
 vi.mock("../../services/auth.service", () => ({
   authService: {

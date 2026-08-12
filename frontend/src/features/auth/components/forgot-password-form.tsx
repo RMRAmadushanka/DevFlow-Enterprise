@@ -14,19 +14,26 @@ import { AlertBanner } from "@/components/feedback/alert";
 import { usePasswordReset } from "../hooks/use-password-reset";
 import {
   forgotPasswordSchema,
+  keycloakForgotPasswordGateSchema,
   type ForgotPasswordFormValues,
 } from "../schemas/auth.schema";
 
 function ForgotPasswordForm() {
-  const { forgotPassword, forgotPending, forgotSuccess, forgotErrorMessage, resetForgot } =
-    usePasswordReset();
+  const {
+    forgotPassword,
+    forgotPending,
+    forgotSuccess,
+    forgotErrorMessage,
+    resetForgot,
+    oidcEnabled,
+  } = usePasswordReset();
 
   const form = useAppForm({
-    schema: forgotPasswordSchema,
+    schema: oidcEnabled ? keycloakForgotPasswordGateSchema : forgotPasswordSchema,
     defaultValues: { email: "" } satisfies ForgotPasswordFormValues,
     onSubmit: async (values) => {
       resetForgot();
-      await forgotPassword(values);
+      await forgotPassword({ email: values.email ?? "" });
     },
   });
 
@@ -42,6 +49,13 @@ function ForgotPasswordForm() {
 
   return (
     <div className="flex flex-col gap-4">
+      {oidcEnabled ? (
+        <AlertBanner
+          tone="info"
+          title="Password reset"
+          description="You will continue in Keycloak to reset your password securely."
+        />
+      ) : null}
       {forgotErrorMessage || form.submitError ? (
         <AlertBanner
           tone="error"
@@ -60,13 +74,16 @@ function ForgotPasswordForm() {
               type="email"
               label="Email"
               autoComplete="email"
-              required
+              required={!oidcEnabled}
               error={fieldState.error?.message}
             />
           )}
         />
-        <SubmitButton loading={form.isSubmitting || forgotPending} loadingText="Sending…">
-          Send reset link
+        <SubmitButton
+          loading={form.isSubmitting || forgotPending}
+          loadingText={oidcEnabled ? "Redirecting…" : "Sending…"}
+        >
+          {oidcEnabled ? "Continue to Keycloak" : "Send reset link"}
         </SubmitButton>
       </AppForm>
     </div>

@@ -1,5 +1,6 @@
 import type { MetricKey, MetricSeries, MonitoringFilters } from "../types/monitoring.types";
 import { makeSeries } from "../utils/format";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -58,6 +59,7 @@ const METRIC_DEFS: Array<{
 
 export const metricsService = {
   async list(_filters: MonitoringFilters): Promise<MetricSeries[]> {
+    if (isLiveBackendMode()) return [];
     await delay();
     return METRIC_DEFS.map((def) => ({
       key: def.key,

@@ -7,7 +7,9 @@ import { CheckCircle2, Loader2, MailWarning, TimerReset } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/typography";
 import { TextInput } from "@/components/forms/input";
+import { AlertBanner } from "@/components/feedback/alert";
 import { routes } from "@/config/routes";
+import { isKeycloakEnabled } from "@/lib/auth/keycloak";
 
 import { useEmailVerification } from "../hooks/use-email-verification";
 
@@ -17,8 +19,34 @@ export interface EmailVerificationProps {
 }
 
 function EmailVerification({ token, email }: EmailVerificationProps) {
+  const oidcEnabled = isKeycloakEnabled();
   const [resendEmail, setResendEmail] = React.useState(email ?? "");
-  const { status, resend, resendPending } = useEmailVerification(token, email);
+  const { status, resend, resendPending } = useEmailVerification(
+    oidcEnabled ? null : token,
+    oidcEnabled ? null : email
+  );
+
+  if (oidcEnabled) {
+    return (
+      <div className="flex flex-col items-center gap-4 text-center" role="status">
+        <MailWarning className="size-10 text-primary" aria-hidden="true" />
+        <div className="space-y-1">
+          <Text variant="title" as="h2">
+            Verify your email
+          </Text>
+          <Text tone="secondary">
+            Email verification is handled by Keycloak. Use the link in your inbox, then sign in.
+          </Text>
+        </div>
+        <AlertBanner
+          tone="info"
+          title="Identity provider"
+          description="DevFlow does not run a separate email verification system."
+        />
+        <Button render={<Link href={routes.auth.login} />}>Back to sign in</Button>
+      </div>
+    );
+  }
 
   if (!token && email) {
     return (
@@ -86,17 +114,10 @@ function EmailVerification({ token, email }: EmailVerificationProps) {
         <Text variant="title" as="h2">
           {status === "expired" ? "Link expired" : "Invalid verification link"}
         </Text>
-        <Text tone="secondary">
-          Request a new verification email to continue.
-        </Text>
+        <Text tone="secondary">Request a new verification email to continue.</Text>
       </div>
       <div className="flex w-full flex-col gap-2">
-        <TextInput
-          label="Email"
-          type="email"
-          value={resendEmail}
-          onChange={setResendEmail}
-        />
+        <TextInput label="Email" type="email" value={resendEmail} onChange={setResendEmail} />
         <Button
           type="button"
           disabled={resendPending || !resendEmail}

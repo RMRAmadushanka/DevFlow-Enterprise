@@ -16,6 +16,8 @@ import type {
 import { buildBreadcrumb, countWords, estimateReadingTimeMinutes } from "../utils/content";
 import { DocumentNotFoundError, DocumentValidationError } from "../utils/errors";
 import { templateService } from "./template.service";
+import { createStubAwareService } from "@/lib/api/stub-service";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -211,7 +213,7 @@ function seedDocuments(): Document[] {
   ];
 }
 
-let documents = seedDocuments();
+let documents = isLiveBackendMode() ? [] : seedDocuments();
 
 const versionsByDoc: Record<string, DocumentVersion[]> = {
   doc_architecture: [
@@ -416,7 +418,7 @@ function nextId() {
   return `doc_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const documentService = {
+const mockDocumentService = {
   async list(params: {
     filters: DocumentFilters;
     sort: DocumentSortField;
@@ -694,3 +696,14 @@ export const documentService = {
     return buildTree();
   },
 };
+
+export const documentService = createStubAwareService("Documents", mockDocumentService, [
+  "list",
+  "getById",
+  "history",
+  "search",
+  "favorites",
+  "recent",
+  "shared",
+  "tree",
+]);

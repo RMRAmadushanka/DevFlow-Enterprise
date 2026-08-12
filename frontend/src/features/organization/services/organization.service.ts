@@ -20,6 +20,10 @@ import {
   OrganizationPermissionError,
   OrganizationValidationError,
 } from "../utils/errors";
+import {
+  isOrganizationApiEnabled,
+  organizationApiService,
+} from "./organization-api.service";
 
 const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -189,7 +193,7 @@ function buildMatrix(orgId: string): PermissionMatrixState {
 
 let matrixOverrides: Record<string, PermissionMatrixState> = {};
 
-export const organizationService = {
+const organizationServiceImpl = {
   async list(params?: { q?: string }): Promise<Organization[]> {
     await delay();
     const q = params?.q?.trim().toLowerCase();
@@ -391,3 +395,14 @@ export const organizationService = {
     matrixOverrides = {};
   },
 };
+
+const mockOrganizationService = organizationServiceImpl;
+
+/** In-memory mock (default). Live when organization API flag / Gateway URL is set. */
+export const organizationService = new Proxy(mockOrganizationService, {
+  get(target, prop, receiver) {
+    const api = isOrganizationApiEnabled() ? organizationApiService : target;
+    const value = Reflect.get(api as object, prop, receiver);
+    return typeof value === "function" ? value.bind(api) : value;
+  },
+});

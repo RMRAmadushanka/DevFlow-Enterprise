@@ -1,0 +1,12 @@
+# Generic service image template (copy into each service or build with --build-arg)
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /workspace
+# Prefer building from the multi-module root in CI; this template assumes a prebuilt JAR.
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+ARG JAR_FILE=app.jar
+COPY ${JAR_FILE} app.jar
+ENV JAVA_OPTS=""
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

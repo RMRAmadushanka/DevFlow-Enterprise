@@ -18,6 +18,8 @@ import type {
 } from "../types/repository.types";
 import { RepositoryNotFoundError, RepositoryValidationError } from "../utils/errors";
 import { parseRemoteName, shortSha } from "../utils/format";
+import { createStubAwareService } from "@/lib/api/stub-service";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -206,7 +208,7 @@ function seedRepositories(): Repository[] {
   ];
 }
 
-let repositories = seedRepositories();
+let repositories = isLiveBackendMode() ? [] : seedRepositories();
 
 const fileTrees: Record<string, FileTreeNode[]> = {
   repo_api_gateway: [
@@ -501,7 +503,7 @@ function nextId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const repositoryService = {
+const mockRepositoryService = {
   async list(params: {
     filters: RepositoryFilters;
     sort: RepositorySortField;
@@ -738,3 +740,17 @@ export const repositoryService = {
     webhooksByRepo[repositoryId] = list.filter((w) => w.id !== webhookId);
   },
 };
+
+export const repositoryService = createStubAwareService(
+  "Repositories",
+  mockRepositoryService,
+  [
+    "list",
+    "getById",
+    "listPullRequests",
+    "getPullRequest",
+    "listFiles",
+    "getFile",
+    "listWebhooks",
+  ]
+);

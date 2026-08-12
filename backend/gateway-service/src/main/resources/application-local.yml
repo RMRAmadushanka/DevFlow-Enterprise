@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  cloud:
+    gateway:
+      # Local profile: no Redis rate limiter (see application.yml / application-docker.yml).
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE

@@ -1,0 +1,5 @@
+﻿# Local developer overrides (no Docker network DNS)
+spring:
+  config:
+    activate:
+      on-profile: local

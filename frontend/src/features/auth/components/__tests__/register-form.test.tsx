@@ -15,6 +15,15 @@ vi.mock("../../services/auth.service", () => ({
   },
 }));
 
+vi.mock("@/lib/auth/keycloak", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth/keycloak")>("@/lib/auth/keycloak");
+  return {
+    ...actual,
+    isOidcEnabled: () => false,
+    isKeycloakEnabled: () => false,
+  };
+});
+
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(

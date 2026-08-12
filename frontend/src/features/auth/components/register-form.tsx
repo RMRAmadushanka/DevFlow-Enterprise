@@ -15,14 +15,18 @@ import { SubmitButton } from "@/components/forms/form-actions";
 import { AlertBanner } from "@/components/feedback/alert";
 
 import { useRegister } from "../hooks/use-register";
-import { registerSchema, type RegisterFormValues } from "../schemas/auth.schema";
+import {
+  keycloakRegisterGateSchema,
+  registerSchema,
+  type RegisterFormValues,
+} from "../schemas/auth.schema";
 import { PasswordStrength } from "./password-strength";
 
 function RegisterForm() {
-  const { register, isPending, errorMessage, reset } = useRegister();
+  const { register, isPending, errorMessage, reset, oidcEnabled } = useRegister();
 
   const form = useAppForm({
-    schema: registerSchema,
+    schema: oidcEnabled ? keycloakRegisterGateSchema : registerSchema,
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -35,11 +39,11 @@ function RegisterForm() {
     onSubmit: async (values) => {
       reset();
       await register({
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        password: values.password,
-        acceptTerms: values.acceptTerms,
+        firstName: values.firstName ?? "",
+        lastName: values.lastName ?? "",
+        email: values.email ?? "",
+        password: values.password ?? "",
+        acceptTerms: Boolean(values.acceptTerms),
       });
     },
   });
@@ -48,6 +52,13 @@ function RegisterForm() {
 
   return (
     <div className="flex flex-col gap-4">
+      {oidcEnabled ? (
+        <AlertBanner
+          tone="info"
+          title="Enterprise registration"
+          description="You will create your identity in Keycloak. DevFlow never stores your password."
+        />
+      ) : null}
       {errorMessage || form.submitError ? (
         <AlertBanner
           tone="error"
@@ -62,14 +73,26 @@ function RegisterForm() {
             name="firstName"
             control={form.control}
             render={({ field, fieldState }) => (
-              <TextInput {...field} label="First name" autoComplete="given-name" required error={fieldState.error?.message} />
+              <TextInput
+                {...field}
+                label="First name"
+                autoComplete="given-name"
+                required={!oidcEnabled}
+                error={fieldState.error?.message}
+              />
             )}
           />
           <FormController
             name="lastName"
             control={form.control}
             render={({ field, fieldState }) => (
-              <TextInput {...field} label="Last name" autoComplete="family-name" required error={fieldState.error?.message} />
+              <TextInput
+                {...field}
+                label="Last name"
+                autoComplete="family-name"
+                required={!oidcEnabled}
+                error={fieldState.error?.message}
+              />
             )}
           />
         </div>
@@ -78,7 +101,14 @@ function RegisterForm() {
           name="email"
           control={form.control}
           render={({ field, fieldState }) => (
-            <TextInput {...field} type="email" label="Email" autoComplete="email" required error={fieldState.error?.message} />
+            <TextInput
+              {...field}
+              type="email"
+              label="Email"
+              autoComplete="email"
+              required={!oidcEnabled}
+              error={fieldState.error?.message}
+            />
           )}
         />
 
@@ -91,10 +121,10 @@ function RegisterForm() {
                 {...field}
                 label="Password"
                 autoComplete="new-password"
-                required
+                required={!oidcEnabled}
                 error={fieldState.error?.message}
               />
-              <PasswordStrength value={password ?? ""} />
+              {!oidcEnabled ? <PasswordStrength value={password ?? ""} /> : null}
             </div>
           )}
         />
@@ -107,7 +137,7 @@ function RegisterForm() {
               {...field}
               label="Confirm password"
               autoComplete="new-password"
-              required
+              required={!oidcEnabled}
               error={fieldState.error?.message}
             />
           )}
@@ -128,8 +158,11 @@ function RegisterForm() {
           )}
         />
 
-        <SubmitButton loading={form.isSubmitting || isPending} loadingText="Creating account…">
-          Create account
+        <SubmitButton
+          loading={form.isSubmitting || isPending}
+          loadingText={oidcEnabled ? "Redirecting…" : "Creating account…"}
+        >
+          {oidcEnabled ? "Continue to Keycloak" : "Create account"}
         </SubmitButton>
       </AppForm>
     </div>

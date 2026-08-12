@@ -15,6 +15,13 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 
+/** Login gate when Keycloak owns credentials — UI preserved; fields optional. */
+export const keycloakLoginGateSchema = z.object({
+  email: z.string().optional(),
+  password: z.string().optional(),
+  rememberMe: z.boolean().optional(),
+});
+
 export const registerSchema = z
   .object({
     firstName: z.string().min(1, "First name is required").max(60),
@@ -31,8 +38,25 @@ export const registerSchema = z
     path: ["confirmPassword"],
   });
 
+/** Registration CTA when Keycloak hosts identity — require terms only. */
+export const keycloakRegisterGateSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().optional(),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
+  acceptTerms: z.boolean().refine((value) => value === true, {
+    message: "You must accept the terms to continue",
+  }),
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
+});
+
+/** Forgot-password CTA — Keycloak collects email on its reset form. */
+export const keycloakForgotPasswordGateSchema = z.object({
+  email: z.string().optional(),
 });
 
 export const resetPasswordSchema = z

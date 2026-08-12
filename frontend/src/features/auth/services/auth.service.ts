@@ -2,6 +2,8 @@ import { permissionsForRole } from "@/lib/permissions";
 
 import { AUTH_STORAGE_KEYS, DEMO_CREDENTIALS } from "../constants/auth.constants";
 import { AuthenticationError, NetworkError, ValidationError } from "../utils/errors";
+import { oidcAuthService } from "./oidc-auth.service";
+import { isUserApiEnabled, userApiService } from "./user-api.service";
 import type {
   ActiveSession,
   ApiKeyRecord,
@@ -141,10 +143,10 @@ function toSession(user: AuthUserProfile): AuthSessionInfo {
 }
 
 /**
- * Frontend-only auth service — simulates network I/O.
+ * Mock auth service — used when Keycloak OIDC is not configured.
  * Never persists passwords; demo credentials are in-memory only.
  */
-export const authService = {
+const mockAuthService = {
   async getSession(): Promise<AuthSessionInfo | null> {
     await delay(120);
     const stored = readStoredSession();
@@ -345,3 +347,185 @@ export const authService = {
     return memoryNotifications;
   },
 };
+
+function oidcNextFromLocation(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return new URLSearchParams(window.location.search).get("next") ?? undefined;
+}
+
+/**
+ * Auth facade — Keycloak OIDC when configured; otherwise mock service (Storybook/tests).
+ * Profile / preferences use user-service when NEXT_PUBLIC_USE_USER_API is enabled.
+ */
+export const authService = {
+  ...mockAuthService,
+
+  getSession(): Promise<AuthSessionInfo | null> {
+    if (oidcAuthService.isEnabled()) {
+      return oidcAuthService.getSession();
+    }
+    return mockAuthService.getSession();
+  },
+
+  login(payload: LoginPayload): Promise<AuthSessionInfo> {
+    if (oidcAuthService.isEnabled()) {
+      // Never send passwords to our APIs — Keycloak owns credentials.
+      void payload;
+      return oidcAuthService.startLogin(oidcNextFromLocation()) as Promise<AuthSessionInfo>;
+    }
+    return mockAuthService.login(payload);
+  },
+
+  register(payload: RegisterPayload): Promise<{ requiresVerification: true; email: string }> {
+    if (oidcAuthService.isEnabled()) {
+      // App-specific fields (e.g. terms) are UX-only here; identity is created in Keycloak.
+      void payload;
+      return oidcAuthService.startRegister(oidcNextFromLocation()) as Promise<{
+        requiresVerification: true;
+        email: string;
+      }>;
+    }
+    return mockAuthService.register(payload);
+  },
+
+  forgotPassword(payload: ForgotPasswordPayload): Promise<{ sent: true }> {
+    if (oidcAuthService.isEnabled()) {
+      void payload;
+      return oidcAuthService.startPasswordReset() as Promise<{ sent: true }>;
+    }
+    return mockAuthService.forgotPassword(payload);
+  },
+
+  resetPassword(payload: ResetPasswordPayload): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      void payload;
+      return oidcAuthService.startPasswordReset();
+    }
+    return mockAuthService.resetPassword(payload);
+  },
+
+  socialLogin(provider: SocialProvider): Promise<AuthSessionInfo> {
+    if (oidcAuthService.isEnabled()) {
+      return oidcAuthService.startLogin(oidcNextFromLocation()) as Promise<AuthSessionInfo>;
+    }
+    return mockAuthService.socialLogin(provider);
+  },
+
+  async logout(): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      await oidcAuthService.logout();
+      return;
+    }
+    await mockAuthService.logout();
+  },
+
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthUserProfile> {
+    if (isUserApiEnabled()) {
+      const existing = readStoredSession();
+      const user = await userApiService.updateProfile(payload, existing?.user);
+      if (existing) writeSession({ ...existing, user }, true);
+      memoryUser = user;
+      return user;
+    }
+    return mockAuthService.updateProfile(payload);
+  },
+
+  async updatePreferences(payload: UpdatePreferencesPayload): Promise<AuthUserProfile> {
+    if (isUserApiEnabled()) {
+      const existing = readStoredSession();
+      const user = await userApiService.updatePreferences(payload, existing?.user);
+      if (existing) writeSession({ ...existing, user }, true);
+      memoryUser = user;
+      return user;
+    }
+    return mockAuthService.updatePreferences(payload);
+  },
+
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    if (isUserApiEnabled()) {
+      return userApiService.getNotificationPreferences(memoryNotifications);
+    }
+    return mockAuthService.getNotificationPreferences();
+  },
+
+  async updateNotificationPreferences(
+    payload: NotificationPreferences
+  ): Promise<NotificationPreferences> {
+    if (isUserApiEnabled()) {
+      memoryNotifications = await userApiService.updateNotificationPreferences(payload);
+      return memoryNotifications;
+    }
+    return mockAuthService.updateNotificationPreferences(payload);
+  },
+
+  async listSessions(): Promise<ActiveSession[]> {
+    if (oidcAuthService.isEnabled()) return [];
+    return mockAuthService.listSessions();
+  },
+
+  async revokeSession(sessionId: string): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      throw new ValidationError("Sessions are managed by Keycloak for this environment");
+    }
+    return mockAuthService.revokeSession(sessionId);
+  },
+
+  async listLoginHistory(): Promise<LoginHistoryEntry[]> {
+    if (oidcAuthService.isEnabled()) return [];
+    return mockAuthService.listLoginHistory();
+  },
+
+  async listApiKeys(): Promise<ApiKeyRecord[]> {
+    if (oidcAuthService.isEnabled()) return [];
+    return mockAuthService.listApiKeys();
+  },
+
+  async createApiKey(name: string): Promise<ApiKeyRecord> {
+    if (oidcAuthService.isEnabled()) {
+      throw new ValidationError("API keys are not available via the app when Keycloak is enabled");
+    }
+    return mockAuthService.createApiKey(name);
+  },
+
+  async revokeApiKey(id: string): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      throw new ValidationError("API keys are not available via the app when Keycloak is enabled");
+    }
+    return mockAuthService.revokeApiKey(id);
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      throw new ValidationError("Change your password in the Keycloak account console");
+    }
+    return mockAuthService.changePassword(payload);
+  },
+
+  async setTwoFactorEnabled(enabled: boolean): Promise<AuthUserProfile> {
+    if (oidcAuthService.isEnabled()) {
+      throw new ValidationError("Two-factor settings are managed in Keycloak");
+    }
+    return mockAuthService.setTwoFactorEnabled(enabled);
+  },
+
+  async verifyEmail(token: string): Promise<"success" | "expired" | "invalid"> {
+    if (oidcAuthService.isEnabled()) {
+      void token;
+      return "invalid";
+    }
+    return mockAuthService.verifyEmail(token);
+  },
+
+  async resendVerification(email: string): Promise<void> {
+    if (oidcAuthService.isEnabled()) {
+      void email;
+      throw new ValidationError(
+        "Resend verification from the Keycloak email link or account console"
+      );
+    }
+    return mockAuthService.resendVerification(email);
+  },
+};
+
+export { isUserApiEnabled, userApiService } from "./user-api.service";
+export type { UserSearchResult } from "./user-api.mappers";

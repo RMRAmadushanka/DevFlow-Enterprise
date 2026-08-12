@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -10,11 +10,16 @@ describe("ProjectSearch", () => {
     useProjectStore.getState().resetFilters();
   });
 
-  it("updates the store search query", async () => {
+  it("updates the store search query after debounce", async () => {
     const user = userEvent.setup();
     render(<ProjectSearch />);
     const input = screen.getByLabelText(/search projects/i);
     await user.type(input, "gateway");
-    expect(useProjectStore.getState().filters.q).toContain("g");
+    await waitFor(
+      () => {
+        expect(useProjectStore.getState().filters.q).toBe("gateway");
+      },
+      { timeout: 1000 }
+    );
   });
 });

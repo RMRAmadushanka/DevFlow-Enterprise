@@ -18,6 +18,8 @@ import type {
   UpdateTaskPayload,
 } from "../types/task.types";
 import { TaskNotFoundError, TaskValidationError } from "../utils/errors";
+import { createStubAwareService } from "@/lib/api/stub-service";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 const delay = (ms = 280) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -241,7 +243,7 @@ function seedTasks(): Task[] {
   ];
 }
 
-let tasks = seedTasks();
+let tasks = isLiveBackendMode() ? [] : seedTasks();
 let sequence = 200;
 
 const detailExtras = new Map<string, Partial<TaskDetail>>();
@@ -387,7 +389,7 @@ function sortTasks(items: Task[], sort: TaskSortField): Task[] {
   return copy;
 }
 
-export const taskService = {
+const mockTaskService = {
   async list(params: {
     filters?: Partial<TaskFilters>;
     sort?: TaskSortField;
@@ -626,3 +628,9 @@ export const taskService = {
     return detail;
   },
 };
+
+export const taskService = createStubAwareService("Tasks", mockTaskService, [
+  "list",
+  "getById",
+  "board",
+]);

@@ -1,0 +1,76 @@
+devflow:
+  gateway:
+    rate-limiter:
+      enabled: true
+
+spring:
+  config:
+    activate:
+      on-profile: docker
+  data:
+    redis:
+      host: redis
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/devflow
+          jwk-set-uri: http://keycloak:8080/realms/devflow/protocol/openid-connect/certs
+  cloud:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RATE_LIMIT_REPLENISH:50}
+            redis-rate-limiter.burstCapacity: ${RATE_LIMIT_BURST:100}
+            key-resolver: "#{@ipKeyResolver}"
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      routes:
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/auth/**,/api/v1/auth/**
+        - id: user-service
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/users/**,/api/v1/user/**
+        - id: organization-service
+          uri: http://organization-service:8083
+          predicates:
+            - Path=/api/organizations/**,/api/v1/organization/**,/api/teams/**,/api/invitations/**
+        - id: project-service
+          uri: http://project-service:8084
+          predicates:
+            - Path=/api/projects/**,/api/v1/project/**
+        - id: task-service
+          uri: http://task-service:8085
+          predicates:
+            - Path=/api/tasks/**,/api/v1/task/**
+        - id: sprint-service
+          uri: http://sprint-service:8086
+          predicates:
+            - Path=/api/sprints/**,/api/v1/sprint/**
+        - id: document-service
+          uri: http://document-service:8087
+          predicates:
+            - Path=/api/documents/**,/api/v1/document/**
+        - id: repository-service
+          uri: http://repository-service:8088
+          predicates:
+            - Path=/api/repositories/**,/api/v1/repository/**
+        - id: deployment-service
+          uri: http://deployment-service:8089
+          predicates:
+            - Path=/api/deployments/**,/api/v1/deployment/**
+        - id: notification-service
+          uri: http://notification-service:8090
+          predicates:
+            - Path=/api/notifications/**,/api/v1/notification/**
+        - id: analytics-service
+          uri: http://analytics-service:8091
+          predicates:
+            - Path=/api/analytics/**,/api/dashboard/**,/api/v1/analytics/**
+        - id: audit-service
+          uri: http://audit-service:8092
+          predicates:
+            - Path=/api/audit-logs/**,/api/v1/audit/**

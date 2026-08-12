@@ -17,25 +17,30 @@ import { routes } from "@/config/routes";
 
 import { DEMO_CREDENTIALS } from "../constants/auth.constants";
 import { useLogin } from "../hooks/use-login";
-import { loginSchema, type LoginFormValues } from "../schemas/auth.schema";
+import {
+  keycloakLoginGateSchema,
+  loginSchema,
+  type LoginFormValues,
+} from "../schemas/auth.schema";
 import { SocialLoginButtons } from "./social-login-buttons";
 
 function LoginForm() {
-  const { login, socialLogin, isPending, errorMessage, reset } = useLogin();
+  const { login, socialLogin, isPending, errorMessage, reset, oidcEnabled } = useLogin();
 
   const form = useAppForm({
-    schema: loginSchema,
+    schema: oidcEnabled ? keycloakLoginGateSchema : loginSchema,
     defaultValues: {
-      email: DEMO_CREDENTIALS.email,
+      email: oidcEnabled ? "" : DEMO_CREDENTIALS.email,
       password: "",
       rememberMe: true,
     } satisfies LoginFormValues,
     mode: "onSubmit",
     onSubmit: async (values) => {
       reset();
+      // Keycloak mode: credentials are never sent to our APIs — login() redirects.
       await login({
-        email: values.email,
-        password: values.password,
+        email: values.email ?? "",
+        password: values.password ?? "",
         rememberMe: values.rememberMe,
       });
     },
@@ -43,6 +48,13 @@ function LoginForm() {
 
   return (
     <div className="flex flex-col gap-6">
+      {oidcEnabled ? (
+        <AlertBanner
+          tone="info"
+          title="Enterprise sign-in"
+          description="You will be redirected to Keycloak to authenticate securely. Passwords are never sent to DevFlow."
+        />
+      ) : null}
       {errorMessage || form.submitError ? (
         <AlertBanner
           tone="error"
@@ -61,7 +73,7 @@ function LoginForm() {
               type="email"
               label="Email"
               autoComplete="email"
-              required
+              required={!oidcEnabled}
               error={fieldState.error?.message}
             />
           )}
@@ -74,7 +86,7 @@ function LoginForm() {
               {...field}
               label="Password"
               autoComplete="current-password"
-              required
+              required={!oidcEnabled}
               error={fieldState.error?.message}
             />
           )}
@@ -101,26 +113,33 @@ function LoginForm() {
           </Link>
         </div>
 
-        <SubmitButton loading={form.isSubmitting || isPending} loadingText="Signing in…">
-          Sign in
+        <SubmitButton
+          loading={form.isSubmitting || isPending}
+          loadingText={oidcEnabled ? "Redirecting…" : "Signing in…"}
+        >
+          {oidcEnabled ? "Continue to Keycloak" : "Sign in"}
         </SubmitButton>
       </AppForm>
 
-      <div className="relative py-1 text-center text-xs text-muted-foreground">
-        <span className="bg-card px-2 relative z-10">Or continue with</span>
-        <span className="absolute inset-x-0 top-1/2 h-px bg-border" aria-hidden="true" />
-      </div>
+      {!oidcEnabled ? (
+        <>
+          <div className="relative py-1 text-center text-xs text-muted-foreground">
+            <span className="bg-card px-2 relative z-10">Or continue with</span>
+            <span className="absolute inset-x-0 top-1/2 h-px bg-border" aria-hidden="true" />
+          </div>
 
-      <SocialLoginButtons
-        disabled={isPending || form.isSubmitting}
-        onProviderSelect={async (provider) => {
-          await socialLogin(provider);
-        }}
-      />
+          <SocialLoginButtons
+            disabled={isPending || form.isSubmitting}
+            onProviderSelect={async (provider) => {
+              await socialLogin(provider);
+            }}
+          />
 
-      <p className="text-center text-xs text-muted-foreground">
-        Demo: {DEMO_CREDENTIALS.email} / {DEMO_CREDENTIALS.password}
-      </p>
+          <p className="text-center text-xs text-muted-foreground">
+            Demo: {DEMO_CREDENTIALS.email} / {DEMO_CREDENTIALS.password}
+          </p>
+        </>
+      ) : null}
     </div>
   );
 }

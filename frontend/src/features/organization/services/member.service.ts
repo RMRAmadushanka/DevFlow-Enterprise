@@ -14,6 +14,8 @@ import {
   OrganizationValidationError,
 } from "../utils/errors";
 import { organizationService } from "./organization.service";
+import { isOrganizationApiEnabled } from "./organization-api.service";
+import { memberApiService } from "./member-api.service";
 
 const delay = (ms = 320) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -139,7 +141,7 @@ async function syncMemberCount(orgId: string) {
   await organizationService.setMemberCount(orgId, count);
 }
 
-export const memberService = {
+const memberServiceImpl = {
   async listMembers(orgId: string): Promise<OrganizationMember[]> {
     await delay();
     await assertOrg(orgId);
@@ -297,3 +299,11 @@ export const memberService = {
     return this.updateTeam(orgId, teamId, { memberIds });
   },
 };
+
+export const memberService = new Proxy(memberServiceImpl, {
+  get(target, prop, receiver) {
+    const api = isOrganizationApiEnabled() ? memberApiService : target;
+    const value = Reflect.get(api as object, prop, receiver);
+    return typeof value === "function" ? value.bind(api) : value;
+  },
+});

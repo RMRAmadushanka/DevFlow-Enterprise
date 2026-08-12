@@ -13,6 +13,7 @@ export const routes = {
     forgotPassword: "/forgot-password",
     resetPassword: "/reset-password",
     verifyEmail: "/verify-email",
+    callback: "/auth/callback",
     /** @deprecated Use `login` */
     signIn: "/login",
     /** @deprecated Use `register` */

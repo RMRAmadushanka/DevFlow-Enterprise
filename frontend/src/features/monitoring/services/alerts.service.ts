@@ -5,6 +5,7 @@ import type {
   UpdateAlertPayload,
 } from "../types/monitoring.types";
 import { MonitoringNotFoundError, MonitoringValidationError } from "../utils/errors";
+import { isLiveBackendMode, rejectStubMutation } from "@/lib/api/live-api";
 
 const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -98,6 +99,7 @@ function matches(alert: Alert, filters: MonitoringFilters): boolean {
 
 export const alertsService = {
   async list(filters: MonitoringFilters): Promise<Alert[]> {
+    if (isLiveBackendMode()) return [];
     await delay();
     return alerts.filter((a) => matches(a, filters));
   },
@@ -110,6 +112,7 @@ export const alertsService = {
   },
 
   async create(payload: CreateAlertPayload): Promise<Alert> {
+    if (isLiveBackendMode()) rejectStubMutation("Monitoring alerts");
     await delay(280);
     if (!payload.name.trim()) throw new MonitoringValidationError("Alert name is required");
     const alert: Alert = {
@@ -131,6 +134,7 @@ export const alertsService = {
   },
 
   async update(id: string, payload: UpdateAlertPayload): Promise<Alert> {
+    if (isLiveBackendMode()) rejectStubMutation("Monitoring alerts");
     await delay(240);
     const index = alerts.findIndex((a) => a.id === id);
     if (index < 0) throw new MonitoringNotFoundError("Alert not found");
@@ -146,6 +150,7 @@ export const alertsService = {
   },
 
   async delete(id: string): Promise<void> {
+    if (isLiveBackendMode()) rejectStubMutation("Monitoring alerts");
     await delay(180);
     if (!alerts.some((a) => a.id === id)) throw new MonitoringNotFoundError("Alert not found");
     alerts = alerts.filter((a) => a.id !== id);

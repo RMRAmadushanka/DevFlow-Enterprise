@@ -1,12 +1,28 @@
 import type { AuthSession } from "./types";
 
 /**
- * Session accessors — stubs for the architecture layer.
- * Replace implementations when auth integration lands; keep the surface stable.
+ * Session accessors — integration point for `apiClient` Bearer tokens.
+ * Do not invent a second auth system: auth features should register a provider
+ * that reads the existing session / future Keycloak store.
  */
 
+type SessionProvider = () => AuthSession | null;
+
+let sessionProvider: SessionProvider | null = null;
+
+/**
+ * Register the active session source (e.g. from features/auth store or OIDC).
+ * Passing `null` clears the provider (tests / logout).
+ */
+export function registerClientSessionProvider(provider: SessionProvider | null): void {
+  sessionProvider = provider;
+}
+
 export function getClientSession(): AuthSession | null {
-  // Intentionally unimplemented — no real auth wiring in the architecture pass.
+  if (sessionProvider) {
+    return sessionProvider();
+  }
+  // Intentionally empty until auth wires a provider (F3 Keycloak / mock bridge).
   return null;
 }
 
