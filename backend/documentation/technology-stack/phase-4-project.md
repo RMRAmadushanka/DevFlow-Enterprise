@@ -1,4 +1,4 @@
-# Phase 4 — Project Management Technologies
+# Phase 4 â€” Project Management Technologies
 
 Phase 4 implements project lifecycle, membership RBAC, settings, tags, favorites, activity, and transactional outbox publishing.
 
@@ -14,19 +14,19 @@ Architecture overview: [../architecture/project-architecture.md](../architecture
 Application runtime for project-service: DI, web MVC, Actuator, security, JPA, Kafka, validation, scheduling.
 
 ### Why This Technology
-Consistent with Phases 1–3; first-class support for resource-server JWT, OpenFeign, Flyway, and scheduled outbox polling.
+Consistent with Phases 1â€“3; first-class support for resource-server JWT, OpenFeign, Flyway, and scheduled outbox polling.
 
 ### Where It Is Used
 - `services/project-service`
 - Shared starters via parent `pom.xml`
 
 ### Code-Level Integration
-Controller → Service → Repository; `@EnableFeignClients`; `@EnableScheduling` via `SchedulingConfig`; `@EnableMethodSecurity` for authenticated controllers.
+Controller â†’ Service â†’ Repository; `@EnableFeignClients`; `@EnableScheduling` via `SchedulingConfig`; `@EnableMethodSecurity` for authenticated controllers.
 
 ### Request/Data Flow
 ```
-Gateway → Boot controller → authz + domain service → JPA → PostgreSQL
-                         ↘ OutboxService (same TX) → OutboxPublisher → Kafka
+Gateway â†’ Boot controller â†’ authz + domain service â†’ JPA â†’ PostgreSQL
+                         â†˜ OutboxService (same TX) â†’ OutboxPublisher â†’ Kafka
 ```
 
 ### Configuration
@@ -55,10 +55,10 @@ All modules under `backend/` compiled with `maven.compiler.release=21`.
 Records for request/response DTOs; enums for status, visibility, roles, event types.
 
 ### Request/Data Flow
-N/A (language). Domain logic uses Java types from JWT claims → entities → outbox payload maps.
+N/A (language). Domain logic uses Java types from JWT claims â†’ entities â†’ outbox payload maps.
 
 ### Configuration
-Parent `pom.xml` → `<java.version>21</java.version>`.
+Parent `pom.xml` â†’ `<java.version>21</java.version>`.
 
 ### Testing
 JUnit 5 on JDK 21 in CI/`mvn verify`.
@@ -83,7 +83,7 @@ Derived queries, `Specification` for filtered list, pagination via `Pageable`, f
 Entities extend `BaseEntity`; `@Version` on project/settings; Criteria API subqueries for tag/favorite filters.
 
 ### Request/Data Flow
-Service → repository / Specification → Hibernate → SQL → entity → mapper DTO.
+Service â†’ repository / Specification â†’ Hibernate â†’ SQL â†’ entity â†’ mapper DTO.
 
 ### Configuration
 `spring.datasource.*`, `spring.jpa.hibernate.ddl-auto=validate`, UTC JDBC timezone.
@@ -111,7 +111,7 @@ All `@Entity` classes under `com.devflow.project.entity`.
 Enums as strings; `project_key` `updatable=false`; JSONB metadata/payload mappings for activity/outbox.
 
 ### Request/Data Flow
-`@Transactional` service methods → flush on commit → DB constraints surface as conflicts.
+`@Transactional` service methods â†’ flush on commit â†’ DB constraints surface as conflicts.
 
 ### Configuration
 `spring.jpa.*`; naming aligned with snake_case Flyway columns.
@@ -133,7 +133,7 @@ System of record for Phase 4 relational data including transactional outbox.
 ACID for domain+outbox atomicity, unique constraints, JSONB, ops maturity already in Compose stack.
 
 ### Where It Is Used
-Database `devflow_project` — projects, members, settings, tags, favorites, activity, outbox.
+Database `devflow_project` â€” projects, members, settings, tags, favorites, activity, outbox.
 
 ### Code-Level Integration
 JDBC URL per profile; Docker init creates logical DB; no FK to user/org DBs.
@@ -142,7 +142,7 @@ JDBC URL per profile; Docker init creates logical DB; no FK to user/org DBs.
 Write path commits domain rows + outbox; reads for authz load memberships; org perms via Feign not SQL joins.
 
 ### Configuration
-`DB_URL=jdbc:postgresql://localhost:5432/devflow_project` (defaults in `application.yml`).
+`DB_URL=jdbc:postgresql://localhost:15432/devflow_project` (defaults in `application.yml`).
 
 ### Testing
 Testcontainers PostgreSQL for Flyway/repository verification.
@@ -158,16 +158,16 @@ Per-service DB ownership; read replicas later for list-heavy APIs; never share w
 Versioned schema migrations for `devflow_project`.
 
 ### Why This Technology
-Repeatable SQL; prevents Hibernate auto-DDL drift; matches Phases 1–3 practice.
+Repeatable SQL; prevents Hibernate auto-DDL drift; matches Phases 1â€“3 practice.
 
 ### Where It Is Used
-`services/project-service/src/main/resources/db/migration/` — `V1` foundation, `V2`–`V8` business tables.
+`services/project-service/src/main/resources/db/migration/` â€” `V1` foundation, `V2`â€“`V8` business tables.
 
 ### Code-Level Integration
 Boot Flyway autoconfig before JPA validate; see [../database/phase-4-project-database.md](../database/phase-4-project-database.md).
 
 ### Request/Data Flow
-Service start → Flyway migrate → app ready → APIs use current schema.
+Service start â†’ Flyway migrate â†’ app ready â†’ APIs use current schema.
 
 ### Configuration
 `spring.flyway.enabled=true`; locations `classpath:db/migration`.
@@ -195,7 +195,7 @@ Standard enterprise security model shared across DevFlow services.
 Public: health/actuator/swagger; all `/api/**` authenticated; service-level `require*` methods enforce project/org permissions.
 
 ### Request/Data Flow
-Bearer JWT → resource server filter → SecurityContext → controller → authorization service → domain.
+Bearer JWT â†’ resource server filter â†’ SecurityContext â†’ controller â†’ authorization service â†’ domain.
 
 ### Configuration
 `@EnableMethodSecurity`; session `STATELESS`; CSRF disabled for Bearer APIs (Phase 2 rationale).
@@ -220,10 +220,10 @@ Works across gateway and multiple resource servers without sticky sessions.
 Gateway validation; project-service resource server; Feign relay of `Authorization` to user/org services.
 
 ### Code-Level Integration
-`SecurityContextUtils.currentUserId()` → Keycloak `sub` → `CurrentUserResolver` → application UUID.
+`SecurityContextUtils.currentUserId()` â†’ Keycloak `sub` â†’ `CurrentUserResolver` â†’ application UUID.
 
 ### Request/Data Flow
-`Authorization: Bearer` → signature/iss/exp → actor resolve → project RBAC.
+`Authorization: Bearer` â†’ signature/iss/exp â†’ actor resolve â†’ project RBAC.
 
 ### Configuration
 ```
@@ -232,7 +232,7 @@ spring.security.oauth2.resourceserver.jwt.jwk-set-uri
 ```
 
 ### Testing
-Missing/invalid token → 401; permission mismatch → 403.
+Missing/invalid token â†’ 401; permission mismatch â†’ 403.
 
 ### Scaling Considerations
 Short TTL + Keycloak refresh; optional audience hardening later.
@@ -254,7 +254,7 @@ Realm `devflow`; JWT issuer for project-service; platform roles `ADMIN` / `SUPER
 No Keycloak Admin API in project-service; identity is JWT-only + user-service mapping.
 
 ### Request/Data Flow
-Login in Keycloak → JWT → Gateway → project-service (no password tables in `devflow_project`).
+Login in Keycloak â†’ JWT â†’ Gateway â†’ project-service (no password tables in `devflow_project`).
 
 ### Configuration
 `KEYCLOAK_ISSUER_URI` / `KEYCLOAK_JWK_SET_URI` (see `.env.example`); realm under `infrastructure/keycloak/`.
@@ -284,7 +284,7 @@ Durable pub/sub matching microservice boundaries; topic already reserved in infr
 `KafkaTemplate<String,String>` sends `EventEnvelope` JSON keyed by project id.
 
 ### Request/Data Flow
-Domain commit → outbox PENDING → scheduled publish → Kafka → future consumers (at-least-once).
+Domain commit â†’ outbox PENDING â†’ scheduled publish â†’ Kafka â†’ future consumers (at-least-once).
 
 ### Configuration
 `spring.kafka.bootstrap-servers`; producer string serializers; consumer group id configured for future use.
@@ -315,7 +315,7 @@ Enqueue inside `@Transactional` service methods; `@Scheduled` poller publishes P
 ### Request/Data Flow
 ```
 Service TX: domain write + INSERT outbox PENDING
-Scheduler TX: read PENDING → Kafka send → PUBLISHED / retry → FAILED
+Scheduler TX: read PENDING â†’ Kafka send â†’ PUBLISHED / retry â†’ FAILED
 ```
 
 ### Configuration
@@ -341,14 +341,14 @@ Synchronous cross-service calls for actor resolution, user existence, and org pe
 Lightweight HTTP client integrated with Spring Cloud; reuses gateway-authenticated Bearer relay.
 
 ### Where It Is Used
-- `UserClient` → user-service
-- `OrganizationClient` → organization-service `.../members/{userId}/permissions`
+- `UserClient` â†’ user-service
+- `OrganizationClient` â†’ organization-service `.../members/{userId}/permissions`
 
 ### Code-Level Integration
 `@EnableFeignClients`; `FeignClientConfig` forwards Authorization; URLs from `devflow.clients.*`.
 
 ### Request/Data Flow
-Create/list/read authz → Feign org permissions → allow/deny; member add → Feign get user by id.
+Create/list/read authz â†’ Feign org permissions â†’ allow/deny; member add â†’ Feign get user by id.
 
 ### Configuration
 ```
@@ -379,7 +379,7 @@ DTOs such as `CreateProjectRequest` (`key` pattern), tag color `#RRGGBB`, member
 `@Valid` on controller bodies; key regexp `^[A-Z0-9]{2,10}$`.
 
 ### Request/Data Flow
-HTTP JSON → `@Valid` → ConstraintViolation → `ApiError` / `VALIDATION_FAILED` → 400.
+HTTP JSON â†’ `@Valid` â†’ ConstraintViolation â†’ `ApiError` / `VALIDATION_FAILED` â†’ 400.
 
 ### Configuration
 Hibernate Validator via `spring-boot-starter-validation`.
@@ -407,7 +407,7 @@ Project-service test suite where integration tests are enabled (module POM inclu
 JUnit extension starts PostgreSQL; Spring datasource overridden for test context.
 
 ### Request/Data Flow
-Test → Boot + container DB → Flyway → exercise repositories/APIs → assert.
+Test â†’ Boot + container DB â†’ Flyway â†’ exercise repositories/APIs â†’ assert.
 
 ### Configuration
 Docker available to CI/agents; test dependencies in module POM.
@@ -435,7 +435,7 @@ Standard for Spring Boot 3; parameterized tests for RBAC matrices.
 `@Test`, Spring Boot test annotations.
 
 ### Request/Data Flow
-N/A — drives test execution of service/controller layers.
+N/A â€” drives test execution of service/controller layers.
 
 ### Configuration
 Surefire/Failsafe via parent Maven POM.
@@ -463,7 +463,7 @@ Fast, deterministic unit tests for authz, create/archive flows, outbox enqueue.
 `@Mock` / `@InjectMocks` or Spring `@MockitoBean`; verify Feign and outbox interactions.
 
 ### Request/Data Flow
-Test invokes service → mocks return entities → assert DTO/events/exceptions.
+Test invokes service â†’ mocks return entities â†’ assert DTO/events/exceptions.
 
 ### Configuration
 `spring-boot-starter-test` (Mockito included).
@@ -491,7 +491,7 @@ project-service springdoc; controller `@Tag` / `@Operation`; Swagger UI path `/s
 Annotated controllers/DTOs; `OpenApiConfig` as present in module.
 
 ### Request/Data Flow
-Developer opens Swagger → Authorize with JWT → call `/api/projects/**`.
+Developer opens Swagger â†’ Authorize with JWT â†’ call `/api/projects/**`.
 
 ### Configuration
 `springdoc.api-docs` / `swagger-ui` properties in `application.yml`.
@@ -519,7 +519,7 @@ Reproducible Postgres/Kafka/Redis/Keycloak stack for developers.
 `application-docker.yml` uses Compose DNS; DB `devflow_project`.
 
 ### Request/Data Flow
-`docker compose up` → infra healthy → run project-service profile `local`/`docker` → gateway `:8080` → `:8084`.
+`docker compose up` â†’ infra healthy â†’ run project-service profile `local`/`docker` â†’ gateway `:8080` â†’ `:8084`.
 
 ### Configuration
 `backend/.env.example`; Keycloak realm import.
@@ -547,7 +547,7 @@ Root `backend/pom.xml`; module `services/project-service`.
 `mvn clean install` builds common-library then services; Failsafe/Surefire for tests.
 
 ### Request/Data Flow
-N/A — build tool. CI runs same goals as local verify.
+N/A â€” build tool. CI runs same goals as local verify.
 
 ### Configuration
 Parent dependency management for Boot/Cloud versions; Java 21 release flag.

@@ -8,7 +8,7 @@ spring:
       write-dates-as-timestamps: false
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/devflow_analytics}
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/devflow_analytics}
     username: ${DB_USERNAME:devflow}
     password: ${DB_PASSWORD:devflow}
     driver-class-name: org.postgresql.Driver
@@ -45,8 +45,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/devflow}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/devflow/protocol/openid-connect/certs}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8280/realms/devflow}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8280/realms/devflow/protocol/openid-connect/certs}
 
 server:
   port: 8091

@@ -23,12 +23,29 @@ $hdrs = Join-Path $env:TEMP 'kc-h.txt'
 $tokFile = Join-Path $env:TEMP 'kc-tok.json'
 $outNull = Join-Path $env:TEMP 'curl-out.null'
 $redirect = 'http://localhost:3000/auth/callback'
-$authUrl = "http://localhost:8180/realms/devflow/protocol/openid-connect/auth?client_id=devflow-web&redirect_uri=$([uri]::EscapeDataString($redirect))&response_type=code&scope=openid%20profile%20email&code_challenge=$($pkce.challenge)&code_challenge_method=S256"
+$kcBase = if ($env:KEYCLOAK_URL) { $env:KEYCLOAK_URL.TrimEnd('/') } else { 'http://localhost:8280' }
+$authUrl = "$kcBase/realms/devflow/protocol/openid-connect/auth?client_id=devflow-web&redirect_uri=$([uri]::EscapeDataString($redirect))&response_type=code&scope=openid%20profile%20email&code_challenge=$($pkce.challenge)&code_challenge_method=S256"
 
-curl.exe -s -c $cookie -b $cookie -o $form $authUrl | Out-Null
-$html = Get-Content $form -Raw
-if ($html -notmatch 'action="([^"]+)"') { throw 'NO_ACTION' }
-$action = [System.Net.WebUtility]::HtmlDecode($Matches[1]) -replace '&amp;', '&'
+Remove-Item $form, $cookie, $hdrs, $tokFile, $outNull -ErrorAction SilentlyContinue
+$curlCode = & curl.exe -s -c $cookie -b $cookie -o $form -w '%{http_code}' $authUrl
+if ($curlCode -eq '302' -or $curlCode -eq '303') {
+  # First hop may redirect to login; follow Location once
+  $loc = (& curl.exe -s -c $cookie -b $cookie -D - -o NUL $authUrl | Select-String -Pattern '^location:' | Select-Object -First 1).Line -replace '^location:\s*',''
+  if ($loc) {
+    $curlCode = & curl.exe -s -c $cookie -b $cookie -o $form -w '%{http_code}' $loc.Trim()
+  }
+}
+if ($curlCode -ne '200' -or -not (Test-Path $form) -or (Get-Item $form).Length -lt 100) {
+  throw "NO_FORM http=$curlCode path=$form size=$((Get-Item $form -ErrorAction SilentlyContinue).Length)"
+}
+$html = [System.IO.File]::ReadAllText($form)
+$actionMatch = [regex]::Match($html, 'action="([^"]+)"')
+if (-not $actionMatch.Success) {
+  # Keycloak sometimes uses single quotes
+  $actionMatch = [regex]::Match($html, "action='([^']+)'")
+}
+if (-not $actionMatch.Success) { throw "NO_ACTION html_len=$($html.Length) snippet=$($html.Substring(0,[Math]::Min(200,$html.Length)))" }
+$action = [System.Net.WebUtility]::HtmlDecode($actionMatch.Groups[1].Value) -replace '&amp;', '&'
 curl.exe -s -D $hdrs -o $outNull -c $cookie -b $cookie -X POST $action `
   --data-urlencode "username=$userName" `
   --data-urlencode "password=$($env:DF_TEST_PASS)" `
@@ -38,7 +55,7 @@ if (-not $locLine) { Get-Content $hdrs | Select-Object -First 25; throw 'NO_LOCA
 $loc = $locLine.Line -replace '^location:\s*', ''
 if ($loc -notmatch 'code=([^&]+)') { throw "NO_CODE loc=$loc" }
 $codeVal = $Matches[1]
-curl.exe -s -o $tokFile -X POST 'http://localhost:8180/realms/devflow/protocol/openid-connect/token' `
+curl.exe -s -o $tokFile -X POST "$kcBase/realms/devflow/protocol/openid-connect/token" `
   -d "grant_type=authorization_code" -d 'client_id=devflow-web' -d "code=$codeVal" `
   -d "redirect_uri=$redirect" -d "code_verifier=$($pkce.verifier)"
 $tok = Get-Content $tokFile -Raw | ConvertFrom-Json
@@ -52,18 +69,19 @@ function Probe([string]$Name, [string]$Url, [string]$Token) {
   Write-Output "$Name -> $code"
 }
 
-Probe 'valid_auth_me' 'http://localhost:8080/api/auth/me' $access
-Probe 'valid_users_me' 'http://localhost:8080/api/users/me' $access
-Probe 'valid_orgs' 'http://localhost:8080/api/organizations' $access
-Probe 'valid_projects' 'http://localhost:8080/api/projects' $access
-Probe 'idor_random_user' 'http://localhost:8080/api/users/00000000-0000-0000-0000-000000000099' $access
+$gw = if ($env:GW_URL) { $env:GW_URL.TrimEnd('/') } else { 'http://localhost:8080' }
+Probe 'valid_auth_me' "$gw/api/auth/me" $access
+Probe 'valid_users_me' "$gw/api/users/me" $access
+Probe 'valid_orgs' "$gw/api/organizations" $access
+Probe 'valid_projects' "$gw/api/projects" $access
+Probe 'idor_random_user' "$gw/api/users/00000000-0000-0000-0000-000000000099" $access
 
-curl.exe -s -o $tokFile -X POST 'http://localhost:8180/realms/devflow/protocol/openid-connect/token' `
+curl.exe -s -o $tokFile -X POST "$kcBase/realms/devflow/protocol/openid-connect/token" `
   -d 'grant_type=refresh_token' -d 'client_id=devflow-web' -d "refresh_token=$refresh"
 $tok2 = Get-Content $tokFile -Raw | ConvertFrom-Json
 if ($tok2.access_token) {
   Write-Output 'refresh_ok'
-  Probe 'after_refresh_auth_me' 'http://localhost:8080/api/auth/me' $tok2.access_token
+  Probe 'after_refresh_auth_me' "$gw/api/auth/me" $tok2.access_token
 } else {
   Write-Output 'refresh_fail'
 }

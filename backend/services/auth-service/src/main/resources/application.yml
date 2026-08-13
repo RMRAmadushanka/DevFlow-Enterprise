@@ -43,8 +43,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/devflow}
-          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/devflow/protocol/openid-connect/certs}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8280/realms/devflow}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8280/realms/devflow/protocol/openid-connect/certs}
 
 server:
   port: 8081
@@ -69,7 +69,7 @@ devflow:
     jwt:
       client-id: ${KEYCLOAK_WEB_CLIENT_ID:devflow-web}
   keycloak:
-    server-url: ${KEYCLOAK_URL:http://localhost:8180}
+    server-url: ${KEYCLOAK_URL:http://localhost:8280}
     realm: ${KEYCLOAK_REALM:devflow}
     admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:devflow-gateway}
     admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:devflow-gateway-secret-change-me}
