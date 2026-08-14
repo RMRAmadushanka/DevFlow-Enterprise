@@ -16,7 +16,7 @@ import { useKeycloakAuthInit } from "@/lib/auth/keycloak-auth-provider";
 
 import { authService } from "../services/auth.service";
 import { useAuthStore } from "../store/auth.store";
-import type { AuthUserProfile, LoginPayload, RegisterPayload } from "../types/auth.types";
+import type { AuthUserProfile } from "../types/auth.types";
 import { useLogout } from "./use-logout";
 
 export function useAuth() {
@@ -40,20 +40,15 @@ export function useAuth() {
     initStatus,
     isKeycloak,
     oidcEnabled: isKeycloakEnabled(),
-    login: (payload?: LoginPayload) =>
-      authService.login(
-        payload ?? { email: "", password: "" }
-      ),
-    register: (payload?: RegisterPayload) =>
-      authService.register(
-        payload ?? {
-          firstName: "",
-          lastName: "",
-          email: "",
-          password: "",
-          acceptTerms: true,
-        }
-      ),
+    login: () => authService.login({ email: "", password: "", rememberMe: false }),
+    register: () =>
+      authService.register({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        acceptTerms: true,
+      }),
     logout,
     refreshToken: () => refreshAccessToken(30),
     hasRole: (role: string) => {

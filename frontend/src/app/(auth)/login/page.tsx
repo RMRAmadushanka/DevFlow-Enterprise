@@ -1,28 +1,13 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
-import { AuthLayout, LoginForm } from "@/features/auth";
-import { routes } from "@/config/routes";
+import { KeycloakAuthRedirect } from "@/features/auth/components/keycloak-auth-redirect";
 
 export default function LoginPage() {
   return (
-    <AuthLayout
-      title="Welcome back"
-      description="Sign in to DevFlow Enterprise"
-      footer={
-        <>
-          Don&apos;t have an account?{" "}
-          <Link href={routes.auth.register} className="font-medium text-primary hover:underline">
-            Create one
-          </Link>
-        </>
-      }
-    >
-      <React.Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
-        <LoginForm />
-      </React.Suspense>
-    </AuthLayout>
+    <React.Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+      <KeycloakAuthRedirect flow="login" />
+    </React.Suspense>
   );
 }

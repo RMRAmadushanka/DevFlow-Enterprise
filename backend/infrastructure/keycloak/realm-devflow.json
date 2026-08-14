@@ -2,6 +2,7 @@
   "realm": "devflow",
   "enabled": true,
   "displayName": "DevFlow",
+  "loginTheme": "devflow",
   "sslRequired": "external",
   "registrationAllowed": true,
   "registrationEmailAsUsername": false,

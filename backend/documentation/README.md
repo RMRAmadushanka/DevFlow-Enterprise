@@ -24,12 +24,15 @@
 | [authentication/keycloak-frontend-integration.md](./authentication/keycloak-frontend-integration.md) | Prompt 6B — Keycloak JS frontend integration |
 | [authentication/backend-keycloak-integration.md](./authentication/backend-keycloak-integration.md) | Prompt 6C — Gateway + microservice JWT/RBAC |
 | [authentication/keycloak-setup.md](./authentication/keycloak-setup.md) | Prompt 6D — Keycloak realm/client setup guide |
+| [authentication/keycloak-login-ui-design-spec.md](./authentication/keycloak-login-ui-design-spec.md) | Prompt 7 — login UI tokens copied from the Next.js auth screens |
+| [authentication/custom-keycloak-theme.md](./authentication/custom-keycloak-theme.md) | Prompt 7 — DevFlow Keycloak login theme |
 | [authentication/phase-5-authentication-test-report.md](./authentication/phase-5-authentication-test-report.md) | Prompt 6F — authn/authz security test report |
 | [technology-stack/phase-5/6A-auth-analysis.md](./technology-stack/phase-5/6A-auth-analysis.md) | Prompt 6A — auth technology inventory |
 | [technology-stack/phase-5/6B-keycloak-frontend.md](./technology-stack/phase-5/6B-keycloak-frontend.md) | Prompt 6B — keycloak-js / OIDC / PKCE notes |
 | [technology-stack/phase-5/6C-backend-security.md](./technology-stack/phase-5/6C-backend-security.md) | Prompt 6C — Spring Security / resource server notes |
 | [technology-stack/phase-5/6D-keycloak-configuration.md](./technology-stack/phase-5/6D-keycloak-configuration.md) | Prompt 6D — Keycloak / OIDC / PKCE technology notes |
 | [technology-stack/phase-5/6F-final-authentication.md](./technology-stack/phase-5/6F-final-authentication.md) | Prompt 6F — final authentication stack summary |
+| [technology-stack/phase-5/7-keycloak-custom-theme.md](./technology-stack/phase-5/7-keycloak-custom-theme.md) | Prompt 7 — Keycloak login theme / FreeMarker / PKCE notes |
 | [architecture/user-organization-architecture.md](./architecture/user-organization-architecture.md) | Phase 3 service ownership, RBAC, Kafka, security |
 | [architecture/project-service-implementation-plan.md](./architecture/project-service-implementation-plan.md) | Prompt 5A — Project domain analysis & implementation plan |
 | [technology-stack/phase-4/5A-analysis.md](./technology-stack/phase-4/5A-analysis.md) | Prompt 5A — technologies discovered for Project Service reuse |

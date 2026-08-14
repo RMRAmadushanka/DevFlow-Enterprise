@@ -50,6 +50,10 @@ Use realm **`devflow`** (imported). Do **not** put application users in **`maste
 
 Admin Console: realm selector (top left) → `devflow`.
 
+Login theme: **`devflow`** (custom templates under `infrastructure/keycloak/themes/devflow`). Realm JSON sets `loginTheme`. Details: [custom-keycloak-theme.md](./custom-keycloak-theme.md).
+
+Admin Console: **Realm settings** → **Themes** → **Login theme** → `devflow`. Leave Admin theme unchanged. Do not change the `master` realm theme.
+
 ---
 
 ## 4–5. Client creation and flow

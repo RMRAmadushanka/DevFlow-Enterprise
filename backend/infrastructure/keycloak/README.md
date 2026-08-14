@@ -6,7 +6,7 @@ Full setup guide: [`documentation/authentication/keycloak-setup.md`](../../docum
 
 ## Realm: `devflow`
 
-Imported on first start from `realm-devflow.json`.
+Imported on first start from `realm-devflow.json`. Login theme: **`devflow`** (`themes/devflow`), mounted read-only into the Keycloak container.
 
 ### Clients
 

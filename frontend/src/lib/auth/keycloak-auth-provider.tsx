@@ -9,6 +9,7 @@ import {
   buildSessionIfAuthenticated,
   clearAuthMarkerCookie,
   clearOidcSessionArtifacts,
+  isAuthenticated,
   isKeycloakEnabled,
   toLibAuthSession,
 } from "@/lib/auth/keycloak";
@@ -57,11 +58,21 @@ export function KeycloakAuthProvider({ children }: { children: React.ReactNode }
     });
 
     setUnauthorizedHandler(() => {
+      // API 401 must not destroy a live Keycloak adapter session.
+      // Doing so sent /login back into keycloak.login() and looped
+      // callback → dashboard → login.
+      if (isKeycloakEnabled() && isAuthenticated()) {
+        return;
+      }
       clearOidcSessionArtifacts();
       clearAuthMarkerCookie();
       logoutStore();
       if (typeof window !== "undefined") {
-        const next = `${window.location.pathname}${window.location.search}`;
+        const path = window.location.pathname;
+        if (path.startsWith("/login") || path.startsWith("/auth/")) {
+          return;
+        }
+        const next = `${path}${window.location.search}`;
         const params = new URLSearchParams();
         if (next && !next.startsWith("/login") && !next.startsWith("/auth/")) {
           params.set("next", next);

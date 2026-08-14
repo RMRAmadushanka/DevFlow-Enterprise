@@ -1,22 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import * as React from "react";
 
-import { AuthLayout, ForgotPasswordForm } from "@/features/auth";
-import { routes } from "@/config/routes";
+import { KeycloakAuthRedirect } from "@/features/auth/components/keycloak-auth-redirect";
 
 export default function ForgotPasswordPage() {
   return (
-    <AuthLayout
-      title="Forgot password"
-      description="We'll email you a link to reset it"
-      footer={
-        <Link href={routes.auth.login} className="font-medium text-primary hover:underline">
-          Back to sign in
-        </Link>
-      }
-    >
-      <ForgotPasswordForm />
-    </AuthLayout>
+    <React.Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Loading…</p>}>
+      <KeycloakAuthRedirect flow="reset" />
+    </React.Suspense>
   );
 }

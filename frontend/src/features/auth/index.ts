@@ -1,8 +1,5 @@
 export { AuthLayout } from "./components/auth-layout";
-export { LoginForm } from "./components/login-form";
-export { RegisterForm } from "./components/register-form";
-export { ForgotPasswordForm } from "./components/forgot-password-form";
-export { ResetPasswordForm } from "./components/reset-password-form";
+export { KeycloakAuthRedirect } from "./components/keycloak-auth-redirect";
 export { EmailVerification } from "./components/email-verification";
 export { PasswordStrength } from "./components/password-strength";
 export { SocialLoginButtons } from "./components/social-login-buttons";

@@ -41,13 +41,10 @@ export const oidcAuthService = {
   },
 
   async getSession(): Promise<AuthSessionInfo | null> {
-    const session = await buildSessionIfAuthenticated();
-    if (!session) {
-      clearAuthMarkerCookie();
-      clearOidcSessionArtifacts();
-      return null;
-    }
-    return session;
+    // Probe only — do not clear tokens/cookies on a null result.
+    // Clearing here caused a login loop: dashboard bootstrap wiped the
+    // in-memory Keycloak session, then /login immediately restarted OIDC.
+    return buildSessionIfAuthenticated();
   },
 
   async logout(): Promise<void> {

@@ -59,4 +59,7 @@ done
   -s 'config.access.token.claim=true' \
   -s 'config.introspection.token.claim=true' || true
 
+/opt/keycloak/bin/kcadm.sh update realms/"$REALM" -s loginTheme=devflow || true
+echo "loginTheme=devflow"
+
 echo "post-import complete"

@@ -102,6 +102,7 @@ services:
       - "${KEYCLOAK_PORT:-8180}:8080"
     volumes:
       - ../keycloak/realm-devflow.json:/opt/keycloak/data/import/realm-devflow.json:ro
+      - ../keycloak/themes/devflow:/opt/keycloak/themes/devflow:ro
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
       interval: 20s

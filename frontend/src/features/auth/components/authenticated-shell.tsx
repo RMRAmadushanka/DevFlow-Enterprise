@@ -17,6 +17,7 @@ import { useProjects } from "@/features/projects";
 import { useLogout } from "../hooks/use-logout";
 import { useSessionBootstrap } from "../hooks/use-session";
 import { useAuthStore } from "../store/auth.store";
+import { isAuthenticated, isKeycloakEnabled } from "@/lib/auth/keycloak";
 import { useKeycloakAuthInit, AuthLoading } from "@/lib/auth/keycloak-auth-provider";
 
 export interface AuthenticatedShellProps {
@@ -94,9 +95,9 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   );
 
   React.useEffect(() => {
-    if (isFetched && status === "anonymous") {
-      router.replace(`${routes.auth.login}?next=${encodeURIComponent(pathname)}`);
-    }
+    if (!isFetched || status !== "anonymous") return;
+    if (isKeycloakEnabled() && isAuthenticated()) return;
+    router.replace(`${routes.auth.login}?next=${encodeURIComponent(pathname)}`);
   }, [isFetched, status, router, pathname]);
 
   React.useEffect(() => {
