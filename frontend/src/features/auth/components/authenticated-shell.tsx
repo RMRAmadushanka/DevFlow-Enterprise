@@ -11,7 +11,7 @@ import { routes } from "@/config/routes";
 import { FeatureEmptyState } from "@/components/architecture/empty";
 import { Button } from "@/components/ui/button";
 import { defaultNavGroups, defaultFooterNavItems } from "@/components/layout/sidebar/nav-config";
-import { OrganizationSwitcher, useOrganizations, useOrganizationStore } from "@/features/organization";
+import { OrganizationSwitcher, useOrganizations, useOrganizationStore, useMyOrgPermissions } from "@/features/organization";
 import { useProjects } from "@/features/projects";
 
 import { useLogout } from "../hooks/use-logout";
@@ -60,6 +60,13 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       })),
     [projectsResult?.items]
   );
+
+  const { data: orgPermissions, isSuccess: hasOrgPermissions } = useMyOrgPermissions(
+    activeOrganizationId || undefined,
+    user?.id
+  );
+
+  const effectivePermissions = hasOrgPermissions ? orgPermissions : permissions;
 
   const navGroups = React.useMemo(() => {
     const [workspace, ...rest] = defaultNavGroups;
@@ -132,7 +139,7 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   }
 
   return (
-    <PermissionProvider role={user.role} permissions={permissions}>
+    <PermissionProvider role={user.role} permissions={effectivePermissions}>
       <AppShell
         organizations={organizations.map((org) => ({
           id: org.id,

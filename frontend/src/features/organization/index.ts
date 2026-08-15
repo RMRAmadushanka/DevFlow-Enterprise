@@ -21,6 +21,7 @@ export { DangerZone } from "./components/danger-zone";
 export { RecentActivity } from "./components/recent-activity";
 export { AuditLogTable } from "./components/audit-log-table";
 export { OrganizationSettingsShell } from "./components/organization-settings-shell";
+export { OrganizationSettingsGate } from "./components/organization-settings-shell";
 export {
   OrganizationCardSkeleton,
   MemberTableSkeleton,
@@ -43,6 +44,7 @@ export {
   useRoles,
   usePermissionMatrix,
   useSavePermissionMatrix,
+  useMyOrgPermissions,
   useDuplicateRole,
   useCurrentOrganization,
 } from "./hooks/use-organizations";

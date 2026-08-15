@@ -100,7 +100,7 @@ Related: [project-feature-api-mapping.md](./project-feature-api-mapping.md) (Pha
 | same | Remove member | Remove | **Mock** | Org | DELETE | `.../members/{userId}` | — | 204 | Bearer | manage_members | Pending | 403 | — |
 | `/organizations/[id]/teams` | Teams | List/create/update/delete | **Mock** | Org | CRUD | `/api/organizations/{id}/teams`, `/api/teams/{id}` | see contract | `TeamResponse` | Bearer | team.* | — | 403 | Empty teams |
 | same | Team members | Assign | **Mock** | Org | POST/DELETE | `/api/teams/{id}/members` | `{userId,role}` | team membership | Bearer | `team.manage_members` | — | Must be org member | Empty |
-| `/settings/roles` | Roles / permission matrix | List roles / save matrix | **Mock** matrix editor | Partial | GET | `.../roles`, `.../permissions` | Bearer | roles/permissions | Bearer | org read | — | — | **Gap:** no save permission-matrix API (seeded RBAC) |
+| `/settings/roles` | Roles / permission matrix | List roles / save matrix | Live | Org | GET/PUT | `.../permission-matrix`, `.../roles`, `.../permissions` | Bearer | matrix DTO | Bearer | GET: org read; PUT: `role.manage` | — | 400 unknown codes | Overrides stored in `organization_role_permissions` |
 | Org stats / activity / audit | Widgets | View | **Mock** | Partial audit stub / **Gap** stats | GET | future | — | — | — | — | — | — | Out of scope |
 
 **Enum mismatches (org):**  

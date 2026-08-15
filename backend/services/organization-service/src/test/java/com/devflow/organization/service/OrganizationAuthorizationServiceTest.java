@@ -1,6 +1,7 @@
 package com.devflow.organization.service;
 
 import com.devflow.organization.repository.OrganizationMembershipRepository;
+import com.devflow.organization.repository.OrganizationRolePermissionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,9 @@ class OrganizationAuthorizationServiceTest {
 
     @Mock
     private OrganizationMembershipRepository membershipRepository;
+
+    @Mock
+    private OrganizationRolePermissionRepository organizationRolePermissionRepository;
 
     @InjectMocks
     private OrganizationAuthorizationService authorizationService;
@@ -61,6 +65,19 @@ class OrganizationAuthorizationServiceTest {
         assertThat(authorizationService.canManageMembers(orgId, guestId)).isFalse();
         assertThat(authorizationService.canDeleteOrganization(orgId, guestId)).isFalse();
         assertThat(authorizationService.canManageTeams(orgId, guestId)).isFalse();
+    }
+
+    @Test
+    void orgOverrideReplacesGlobalRolePermissions() {
+        UUID orgId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        when(organizationRolePermissionRepository.existsByOrganizationId(orgId)).thenReturn(true);
+        when(organizationRolePermissionRepository.findPermissionCodes(orgId, userId))
+                .thenReturn(Set.of("organization.read", "role.manage"));
+
+        assertThat(authorizationService.canManageRoles(orgId, userId)).isTrue();
+        assertThat(authorizationService.canManageMembers(orgId, userId)).isFalse();
     }
 
     @Test

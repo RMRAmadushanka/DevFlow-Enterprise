@@ -7,6 +7,8 @@ import * as React from "react";
 import { toast } from "@/components/feedback/toast";
 import { routes } from "@/config/routes";
 
+import { isAuthorizationError } from "@/lib/api";
+
 import { organizationKeys } from "../constants/organization.constants";
 import { organizationService } from "../services/organization.service";
 import { useOrganizationStore } from "../store/organization.store";
@@ -17,7 +19,22 @@ import type {
   UpdateOrganizationPayload,
 } from "../types/organization.types";
 import type { PermissionMatrixState } from "../types/member.types";
-import { toOrganizationErrorMessage } from "../utils/errors";
+import {
+  OrganizationNotFoundError,
+  OrganizationPermissionError,
+  toOrganizationErrorMessage,
+} from "../utils/errors";
+
+function shouldRetryOrganizationQuery(failureCount: number, error: Error): boolean {
+  if (
+    isAuthorizationError(error) ||
+    error instanceof OrganizationPermissionError ||
+    error instanceof OrganizationNotFoundError
+  ) {
+    return false;
+  }
+  return failureCount < 1;
+}
 
 export function useOrganizations(params?: { q?: string; enabled?: boolean }) {
   const setOrganizations = useOrganizationStore((s) => s.setOrganizations);
@@ -25,6 +42,7 @@ export function useOrganizations(params?: { q?: string; enabled?: boolean }) {
     queryKey: organizationKeys.list(params),
     queryFn: () => organizationService.list(params),
     enabled: params?.enabled ?? true,
+    retry: shouldRetryOrganizationQuery,
   });
 
   React.useEffect(() => {
@@ -39,6 +57,7 @@ export function useOrganization(id: string | undefined) {
     queryKey: organizationKeys.detail(id ?? "unknown"),
     queryFn: () => organizationService.getById(id!),
     enabled: Boolean(id),
+    retry: shouldRetryOrganizationQuery,
   });
 }
 
@@ -161,6 +180,7 @@ export function useRoles(orgId: string | undefined) {
     queryKey: organizationKeys.roles(orgId ?? "unknown"),
     queryFn: () => organizationService.listRoles(orgId!),
     enabled: Boolean(orgId),
+    retry: shouldRetryOrganizationQuery,
   });
 }
 
@@ -169,6 +189,7 @@ export function usePermissionMatrix(orgId: string | undefined) {
     queryKey: organizationKeys.matrix(orgId ?? "unknown"),
     queryFn: () => organizationService.getPermissionMatrix(orgId!),
     enabled: Boolean(orgId),
+    retry: shouldRetryOrganizationQuery,
   });
 }
 
@@ -178,10 +199,19 @@ export function useSavePermissionMatrix(orgId: string) {
     mutationFn: (matrix: PermissionMatrixState) =>
       organizationService.savePermissionMatrix(orgId, matrix),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: organizationKeys.matrix(orgId) });
+      void queryClient.invalidateQueries({ queryKey: organizationKeys.detail(orgId) });
       toast.success("Permissions saved");
     },
     onError: (error) => toast.error(toOrganizationErrorMessage(error)),
+  });
+}
+
+export function useMyOrgPermissions(orgId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: organizationKeys.memberPermissions(orgId ?? "unknown", userId ?? "unknown"),
+    queryFn: () => organizationService.listMemberPermissions(orgId!, userId!),
+    enabled: Boolean(orgId && userId),
+    retry: shouldRetryOrganizationQuery,
   });
 }
 
@@ -198,13 +228,22 @@ export function useDuplicateRole(orgId: string) {
 }
 
 export function useCurrentOrganization() {
+  const list = useOrganizations();
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId);
   const organizations = useOrganizationStore((s) => s.organizations);
-  const fromList = organizations.find((org) => org.id === currentOrganizationId);
-  const detail = useOrganization(currentOrganizationId ?? undefined);
+  const listed = list.data ?? organizations;
+  const fromList =
+    listed.find((org) => org.id === currentOrganizationId) ?? listed[0] ?? null;
+  const organizationId = currentOrganizationId ?? fromList?.id ?? null;
+  const detail = useOrganization(organizationId ?? undefined);
+
   return {
-    organizationId: currentOrganizationId,
+    organizationId,
     organization: detail.data ?? fromList ?? null,
-    isLoading: detail.isLoading && !fromList,
+    isLoading:
+      list.isLoading ||
+      (Boolean(organizationId) && detail.isLoading && !fromList && !detail.data),
+    isError: Boolean(organizationId) && detail.isError && !fromList && !detail.data,
+    hasNoOrganization: list.isSuccess && listed.length === 0,
   };
 }

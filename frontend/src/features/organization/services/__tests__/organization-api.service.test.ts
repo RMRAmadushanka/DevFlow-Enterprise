@@ -23,6 +23,9 @@ vi.mock("@/lib/api", async () => {
       listTeamMembers: vi.fn(),
       addTeamMember: vi.fn(),
       removeTeamMember: vi.fn(),
+      getPermissionMatrix: vi.fn(),
+      savePermissionMatrix: vi.fn(),
+      listMemberPermissions: vi.fn(),
     },
     userApi: {
       me: vi.fn(),
@@ -149,5 +152,35 @@ describe("organizationApiService", () => {
       roleCode: "MEMBER",
       expiresInDays: 14,
     });
+  });
+
+  it("loads and saves the permission matrix", async () => {
+    vi.mocked(organizationApi.getById).mockResolvedValue(sampleOrg);
+    vi.mocked(organizationApi.getPermissionMatrix).mockResolvedValue({
+      roles: [{ code: "OWNER", name: "Owner" }],
+      permissions: [{ code: "organization.read", name: "Read organization" }],
+      grants: [{ roleCode: "OWNER", permissionCodes: ["organization.read"] }],
+      customized: false,
+    });
+    vi.mocked(organizationApi.savePermissionMatrix).mockResolvedValue({
+      roles: [{ code: "OWNER", name: "Owner" }],
+      permissions: [{ code: "organization.read", name: "Read organization" }],
+      grants: [{ roleCode: "OWNER", permissionCodes: ["organization.read"] }],
+      customized: true,
+    });
+
+    const matrix = await organizationApiService.getPermissionMatrix("org1");
+    expect(matrix.rows[0]?.permission).toBe("organization.read");
+    expect(matrix.roles[0]?.key).toBe("owner");
+
+    await organizationApiService.savePermissionMatrix("org1", matrix);
+    expect(organizationApi.savePermissionMatrix).toHaveBeenCalledWith(
+      "org1",
+      expect.objectContaining({
+        grants: expect.arrayContaining([
+          expect.objectContaining({ roleCode: "OWNER" }),
+        ]),
+      })
+    );
   });
 });

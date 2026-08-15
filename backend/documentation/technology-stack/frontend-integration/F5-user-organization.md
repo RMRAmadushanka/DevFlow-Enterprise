@@ -65,7 +65,7 @@ Bearer token comes from F3 `getClientSession()` via `apiClient`.
 | Teams | team CRUD + members | `/api/organizations/{id}/teams`, `/api/teams/**` |
 | Ownership transfer | promote target to `OWNER`, demote actor to `ADMIN` | `PATCH .../members/{userId}` |
 | Leave | remove self membership | `DELETE .../members/{userId}` |
-| Roles / permission matrix | seeded role codes mapped to UI | no custom role API — read-only matrix from FE permission catalog |
+| Roles / permission matrix | GET/PUT org matrix mapped to UI grid | persisted per org in `organization_role_permissions` |
 | Activity / audit | empty arrays (no BE yet) | — |
 
 ### Role mapping
@@ -134,7 +134,7 @@ Frontend role checks remain UX-only; Gateway + org RBAC enforce authorization.
 
 - No global user directory/search API — search is org-member scoped (+ UUID lookup)  
 - Org branding colors, industry, storage meters, activity, and audit logs are not fully backed by Phase 3 APIs  
-- Custom role duplication / editable permission matrix is not persisted server-side  
+- Custom role duplication is not supported; the permission matrix is persisted per organization  
 - Invite `teamId` / `message` fields are UI-only for live invitations  
 - Sessions, password change, 2FA, API keys remain mock / IdP-owned (Keycloak)  
 - Shell project switcher still uses layout sample projects (not org/project APIs)  

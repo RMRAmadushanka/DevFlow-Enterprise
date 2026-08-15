@@ -20,7 +20,9 @@ export function profileFromClaims(
   authMe?: CurrentUser | null
 ): AuthUserProfile {
   const claims = decodeJwtPayload(accessToken);
-  const roles = authMe?.roles ?? realmRolesFromClaims(claims ?? { sub: "" });
+  const jwtRoles = realmRolesFromClaims(claims ?? { sub: "" });
+  const apiRoles = authMe?.roles ?? [];
+  const roles = [...jwtRoles, ...apiRoles];
   const role: Role = mapRealmRolesToUiRole(roles);
 
   const firstName =

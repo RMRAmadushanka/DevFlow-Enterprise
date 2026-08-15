@@ -53,11 +53,14 @@ public class PermissionService {
         organizationService.requireOrganization(organizationId);
         authorizationService.requireRead(organizationId, actorId);
 
-        var membership = membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
+        membershipRepository.findByOrganizationIdAndUserId(organizationId, userId)
                 .orElseThrow(() -> new MembershipNotFoundException(organizationId, userId));
 
-        List<Permission> permissions = rolePermissionRepository.findPermissionsByRoleId(membership.getRole().getId());
-        return permissions.stream().map(this::toResponse).toList();
+        Set<String> codes = authorizationService.permissionCodes(organizationId, userId);
+        return permissionRepository.findAll().stream()
+                .filter(permission -> codes.contains(permission.getCode()))
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)

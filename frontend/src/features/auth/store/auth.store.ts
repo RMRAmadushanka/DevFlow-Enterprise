@@ -18,6 +18,7 @@ interface AuthState {
   sessionId: string | null;
   setSession: (session: AuthSessionInfo | null) => void;
   setUser: (user: AuthUserProfile | null) => void;
+  setPermissions: (permissions: string[]) => void;
   updateProfile: (patch: Partial<AuthUserProfile>) => void;
   logout: () => void;
 }
@@ -47,6 +48,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
           }
     ),
   setUser: (user) => set({ user, status: user ? "authenticated" : "anonymous" }),
+  setPermissions: (permissions) => set({ permissions }),
   updateProfile: (patch) =>
     set((state) =>
       state.user

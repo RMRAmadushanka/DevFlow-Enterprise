@@ -9,7 +9,9 @@ import type {
   Membership,
   Organization as ApiOrganization,
   OrganizationRoleCode,
+  PermissionMatrix as ApiPermissionMatrix,
   Team as ApiTeam,
+  UpdatePermissionMatrixRequest,
 } from "@/lib/api/types/organization";
 import type { User } from "@/lib/api/types/user";
 
@@ -182,10 +184,95 @@ export function toOrganizationStats(org: Organization): OrganizationStats {
   };
 }
 
+const ORG_PERMISSION_ALIASES: Record<string, readonly string[]> = {
+  "organization.manage_members": ["member.invite", "member.remove", "member.update"],
+  "organization.update": ["settings.update", "settings.manage", "org.manage"],
+  "organization.read": ["settings.read"],
+  "team.create": ["team.manage"],
+  "team.update": ["team.manage"],
+  "team.delete": ["team.manage"],
+  "team.manage_members": ["team.manage"],
+};
+
+function humanizePermissionCode(code: string): string {
+  return code
+    .split(/[._]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function groupFromPermissionCode(code: string): string {
+  const prefix = code.split(".")[0] ?? "other";
+  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+}
+
+export function permissionMeta(code: string): { label: string; group: string } {
+  return (
+    PERMISSION_LABELS[code] ?? {
+      label: humanizePermissionCode(code),
+      group: groupFromPermissionCode(code),
+    }
+  );
+}
+
+/** Expand organization-service codes so existing UI PermissionGuards still match. */
+export function expandOrgPermissionCodes(codes: readonly string[]): string[] {
+  const expanded = new Set<string>(codes);
+  for (const code of codes) {
+    for (const alias of ORG_PERMISSION_ALIASES[code] ?? []) {
+      expanded.add(alias);
+    }
+  }
+  return [...expanded];
+}
+
+export function toUiPermissionMatrix(matrix: ApiPermissionMatrix): PermissionMatrixState {
+  const roles = matrix.roles.map((role) => {
+    const key = toUiOrgRole(role.code);
+    return {
+      key,
+      name: role.name || ROLE_LABELS[key],
+    };
+  });
+  const grantsByUiRole = new Map<string, Set<string>>();
+  for (const grant of matrix.grants) {
+    grantsByUiRole.set(toUiOrgRole(grant.roleCode), new Set(grant.permissionCodes));
+  }
+  const rows = matrix.permissions.map((permission) => {
+    const meta = permissionMeta(permission.code);
+    const roleFlags: Record<string, boolean> = {};
+    for (const role of roles) {
+      roleFlags[role.key] = grantsByUiRole.get(role.key)?.has(permission.code) ?? false;
+    }
+    return {
+      permission: permission.code,
+      label: permission.name || meta.label,
+      group: meta.group,
+      roles: roleFlags,
+    };
+  });
+  return { roles, rows };
+}
+
+export function toUpdatePermissionMatrixRequest(
+  matrix: PermissionMatrixState
+): UpdatePermissionMatrixRequest {
+  return {
+    grants: matrix.roles.map((role) => ({
+      roleCode: toBackendOrgRole(role.key as Role),
+      permissionCodes: matrix.rows
+        .filter((row) => row.roles[role.key])
+        .map((row) => row.permission),
+    })),
+  };
+}
+
 /** Seeded API roles exposed as UI role definitions (no custom role CRUD on BE). */
 export function buildLiveRoleDefinitions(
   org: Organization,
-  members: OrganizationMember[]
+  members: OrganizationMember[],
+  matrix?: PermissionMatrixState
 ): OrgRoleDefinition[] {
   const apiRoles: Role[] = ["owner", "admin", "developer", "viewer"];
   return apiRoles.map((role) => ({
@@ -194,7 +281,9 @@ export function buildLiveRoleDefinitions(
     name: ROLE_LABELS[role],
     description: `${ROLE_LABELS[role]} access for ${org.name}`,
     isSystem: true,
-    permissions: [...ROLE_PERMISSIONS[role]],
+    permissions: matrix
+      ? matrix.rows.filter((row) => row.roles[role]).map((row) => row.permission)
+      : [...ROLE_PERMISSIONS[role]],
     userCount: members.filter((m) => m.role === role).length,
   }));
 }

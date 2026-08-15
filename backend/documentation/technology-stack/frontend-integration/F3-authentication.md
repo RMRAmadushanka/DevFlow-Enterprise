@@ -157,5 +157,5 @@ No secrets in `NEXT_PUBLIC_*`.
 
 - Register / forgot-password / verify-email UIs still mock when OIDC enabled (use Keycloak account/reset flows)
 - No BFF httpOnly cookie session yet  
-- Org-scoped permissions from organization-service not fully hydrated into the permission matrix  
+- Org-scoped permissions from organization-service hydrate the Settings → Roles matrix and AuthenticatedShell guards  
 - Live E2E against Keycloak depends on local Docker stack being up  

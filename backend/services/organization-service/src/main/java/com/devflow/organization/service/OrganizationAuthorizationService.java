@@ -4,6 +4,7 @@ import com.devflow.common.constant.Roles;
 import com.devflow.common.exception.ForbiddenException;
 import com.devflow.common.security.SecurityContextUtils;
 import com.devflow.organization.repository.OrganizationMembershipRepository;
+import com.devflow.organization.repository.OrganizationRolePermissionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,11 +28,17 @@ public class OrganizationAuthorizationService {
     public static final String PERM_PROJECT_READ = "project.read";
     public static final String PERM_PROJECT_UPDATE = "project.update";
     public static final String PERM_PROJECT_DELETE = "project.delete";
+    public static final String PERM_ROLE_MANAGE = "role.manage";
 
     private final OrganizationMembershipRepository membershipRepository;
+    private final OrganizationRolePermissionRepository organizationRolePermissionRepository;
 
-    public OrganizationAuthorizationService(OrganizationMembershipRepository membershipRepository) {
+    public OrganizationAuthorizationService(
+            OrganizationMembershipRepository membershipRepository,
+            OrganizationRolePermissionRepository organizationRolePermissionRepository
+    ) {
         this.membershipRepository = membershipRepository;
+        this.organizationRolePermissionRepository = organizationRolePermissionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -40,10 +47,13 @@ public class OrganizationAuthorizationService {
             return Set.of(
                     PERM_ORG_READ, PERM_ORG_UPDATE, PERM_ORG_DELETE, PERM_ORG_MANAGE_MEMBERS,
                     PERM_TEAM_CREATE, PERM_TEAM_READ, PERM_TEAM_UPDATE, PERM_TEAM_DELETE, PERM_TEAM_MANAGE_MEMBERS,
-                    PERM_PROJECT_CREATE, PERM_PROJECT_READ, PERM_PROJECT_UPDATE, PERM_PROJECT_DELETE
+                    PERM_PROJECT_CREATE, PERM_PROJECT_READ, PERM_PROJECT_UPDATE, PERM_PROJECT_DELETE,
+                    PERM_ROLE_MANAGE
             );
         }
-        Set<String> codes = membershipRepository.findPermissionCodes(organizationId, userId);
+        Set<String> codes = organizationRolePermissionRepository.existsByOrganizationId(organizationId)
+                ? organizationRolePermissionRepository.findPermissionCodes(organizationId, userId)
+                : membershipRepository.findPermissionCodes(organizationId, userId);
         return codes == null ? Collections.emptySet() : codes;
     }
 
@@ -102,6 +112,17 @@ public class OrganizationAuthorizationService {
     @Transactional(readOnly = true)
     public void requireManageMembers(UUID organizationId, UUID userId) {
         require(canManageMembers(organizationId, userId), "Not allowed to manage members");
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canManageRoles(UUID organizationId, UUID userId) {
+        Set<String> perms = permissionCodes(organizationId, userId);
+        return perms.contains(PERM_ROLE_MANAGE) || perms.contains(PERM_ORG_MANAGE_MEMBERS);
+    }
+
+    @Transactional(readOnly = true)
+    public void requireManageRoles(UUID organizationId, UUID userId) {
+        require(canManageRoles(organizationId, userId), "Not allowed to manage roles");
     }
 
     @Transactional(readOnly = true)

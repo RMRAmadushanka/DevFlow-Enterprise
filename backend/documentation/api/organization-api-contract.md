@@ -168,9 +168,26 @@ Documented in [membership-api-contract.md](./membership-api-contract.md). Requir
 |---|---|---|
 | `GET` | `/api/organizations/{organizationId}/roles` | Authenticated org member / platform admin |
 | `GET` | `/api/organizations/{organizationId}/permissions` | Same |
-| `GET` | `/api/organizations/{organizationId}/members/{userId}/permissions` | Same |
+| `GET` | `/api/organizations/{organizationId}/permission-matrix` | Same (`organization.read`) |
+| `PUT` | `/api/organizations/{organizationId}/permission-matrix` | `role.manage` (OWNER/ADMIN by default; platform admin bypass) |
+| `GET` | `/api/organizations/{organizationId}/members/{userId}/permissions` | Same as GET roles |
 
 Seeded role codes: `OWNER`, `ADMIN`, `MEMBER`, `GUEST`.
+
+`PUT` replaces the organization override table (`organization_role_permissions`). An empty override table means the global seeded `role_permissions` catalog still applies. OWNER always retains `organization.read`, `organization.update`, `organization.delete`, `organization.manage_members`, and `role.manage`. Request body:
+
+```json
+{
+  "grants": [
+    { "roleCode": "OWNER", "permissionCodes": ["organization.read", "role.manage"] },
+    { "roleCode": "ADMIN", "permissionCodes": ["organization.read"] },
+    { "roleCode": "MEMBER", "permissionCodes": ["organization.read"] },
+    { "roleCode": "GUEST", "permissionCodes": ["organization.read"] }
+  ]
+}
+```
+
+All four role codes are required. Unknown permission codes return `400 VALIDATION_FAILED`.
 
 ---
 

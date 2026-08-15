@@ -118,7 +118,7 @@ Existing skeletons, button/form pending, table/query `isLoading`, debounced sear
 
 - Auth-service / some backend tests unstable on **JDK 26** (Mockito inline)  
 - Playwright browsers not installed in CI/agent sandbox  
-- Org branding colors / activity / audit / editable permission matrix not fully BE-backed  
+- Org branding colors / activity / audit not fully BE-backed; permission matrix is persisted per organization  
 - No global user search API (org-member scoped + UUID)  
 - Notification service not wired to shell bell  
 - Stub microservices 8085–8092  

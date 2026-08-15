@@ -11,6 +11,7 @@ import {
 import { TextInput } from "@/components/forms/input";
 import { SubmitButton } from "@/components/forms/form-actions";
 import { AlertBanner } from "@/components/feedback/alert";
+import { PermissionGuard, usePermissions } from "@/lib/permissions";
 
 import { useUpdateBranding } from "../hooks/use-organizations";
 import { brandingSchema, type BrandingFormValues } from "../schemas/organization.schema";
@@ -23,6 +24,8 @@ export interface BrandingFormProps {
 
 function BrandingForm({ organization }: BrandingFormProps) {
   const update = useUpdateBranding(organization.id);
+  const { can, role } = usePermissions();
+  const canUpdate = role == null ? true : can("organization.update");
 
   const form = useAppForm({
     schema: brandingSchema,
@@ -63,6 +66,7 @@ function BrandingForm({ organization }: BrandingFormProps) {
                 {...field}
                 label="Logo URL"
                 placeholder="https://"
+                disabled={!canUpdate}
                 error={fieldState.error?.message}
               />
             )}
@@ -75,6 +79,7 @@ function BrandingForm({ organization }: BrandingFormProps) {
                 {...field}
                 label="Primary color"
                 placeholder="#2563EB"
+                disabled={!canUpdate}
                 error={fieldState.error?.message}
               />
             )}
@@ -87,13 +92,16 @@ function BrandingForm({ organization }: BrandingFormProps) {
                 {...field}
                 label="Accent color"
                 placeholder="#0F172A"
+                disabled={!canUpdate}
                 error={fieldState.error?.message}
               />
             )}
           />
-          <SubmitButton loading={form.isSubmitting || update.isPending} loadingText="Saving…">
-            Save branding
-          </SubmitButton>
+          <PermissionGuard permission="organization.update">
+            <SubmitButton loading={form.isSubmitting || update.isPending} loadingText="Saving…">
+              Save branding
+            </SubmitButton>
+          </PermissionGuard>
         </AppForm>
       </div>
 

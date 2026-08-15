@@ -114,5 +114,39 @@ export interface AddTeamMemberRequest {
   role: TeamRole;
 }
 
+export interface PermissionDefinition {
+  id?: string;
+  code: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface PermissionMatrixRole {
+  code: OrganizationRoleCode | string;
+  name: string;
+}
+
+export interface PermissionMatrixPermission {
+  code: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface PermissionMatrixGrant {
+  roleCode: OrganizationRoleCode | string;
+  permissionCodes: string[];
+}
+
+export interface PermissionMatrix {
+  roles: PermissionMatrixRole[];
+  permissions: PermissionMatrixPermission[];
+  grants: PermissionMatrixGrant[];
+  customized: boolean;
+}
+
+export interface UpdatePermissionMatrixRequest {
+  grants: PermissionMatrixGrant[];
+}
+
 export type OrganizationPage<T> = PageResponse<T>;
 export type OrganizationListQuery = PageQuery;

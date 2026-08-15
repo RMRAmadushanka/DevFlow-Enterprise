@@ -13,6 +13,7 @@ import { TextareaField } from "@/components/forms/textarea";
 import { SelectField } from "@/components/forms/select";
 import { SubmitButton } from "@/components/forms/form-actions";
 import { AlertBanner } from "@/components/feedback/alert";
+import { PermissionGuard, usePermissions } from "@/lib/permissions";
 
 import {
   INDUSTRY_OPTIONS,
@@ -175,6 +176,8 @@ function CreateOrganizationForm() {
 
 function EditOrganizationForm({ organization }: { organization: Organization }) {
   const update = useUpdateOrganization(organization.id);
+  const { can, role } = usePermissions();
+  const canUpdate = role == null ? true : can("organization.update");
 
   const form = useAppForm({
     schema: updateOrganizationSchema,
@@ -206,14 +209,26 @@ function EditOrganizationForm({ organization }: { organization: Organization }) 
           name="name"
           control={form.control}
           render={({ field, fieldState }) => (
-            <TextInput {...field} label="Organization name" required error={fieldState.error?.message} />
+            <TextInput
+              {...field}
+              label="Organization name"
+              required
+              disabled={!canUpdate}
+              error={fieldState.error?.message}
+            />
           )}
         />
         <FormController
           name="description"
           control={form.control}
           render={({ field, fieldState }) => (
-            <TextareaField {...field} label="Description" rows={3} error={fieldState.error?.message} />
+            <TextareaField
+              {...field}
+              label="Description"
+              rows={3}
+              disabled={!canUpdate}
+              error={fieldState.error?.message}
+            />
           )}
         />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -270,9 +285,11 @@ function EditOrganizationForm({ organization }: { organization: Organization }) 
             )}
           />
         </div>
-        <SubmitButton loading={form.isSubmitting || update.isPending} loadingText="Saving…">
-          Save changes
-        </SubmitButton>
+        <PermissionGuard permission="organization.update">
+          <SubmitButton loading={form.isSubmitting || update.isPending} loadingText="Saving…">
+            Save changes
+          </SubmitButton>
+        </PermissionGuard>
       </AppForm>
     </div>
   );

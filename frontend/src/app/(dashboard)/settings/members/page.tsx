@@ -8,28 +8,25 @@ import { PermissionGuard } from "@/lib/permissions";
 import {
   InviteMemberModal,
   MemberTable,
-  OrganizationSettingsShell,
-  OrganizationSettingsSkeleton,
-  useCurrentOrganization,
+  OrganizationSettingsGate,
 } from "@/features/organization";
 
 export default function OrganizationMembersSettingsPage() {
-  const { organizationId, isLoading } = useCurrentOrganization();
-  const [inviteOpen, setInviteOpen] = React.useState(false);
-
-  if (isLoading || !organizationId) {
-    return (
-      <OrganizationSettingsShell title="Members" description="Invite and manage members">
-        <OrganizationSettingsSkeleton />
-      </OrganizationSettingsShell>
-    );
-  }
-
   return (
-    <OrganizationSettingsShell
+    <OrganizationSettingsGate
       title="Members"
       description="Invite teammates, change roles, and manage access"
     >
+      {({ organizationId }) => <MembersSettingsContent organizationId={organizationId} />}
+    </OrganizationSettingsGate>
+  );
+}
+
+function MembersSettingsContent({ organizationId }: { organizationId: string }) {
+  const [inviteOpen, setInviteOpen] = React.useState(false);
+
+  return (
+    <>
       <div className="flex flex-col gap-4">
         <div className="flex justify-end">
           <PermissionGuard permission="member.invite">
@@ -46,6 +43,6 @@ export default function OrganizationMembersSettingsPage() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
       />
-    </OrganizationSettingsShell>
+    </>
   );
 }

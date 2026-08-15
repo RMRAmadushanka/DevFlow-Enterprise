@@ -27,5 +27,6 @@ describe("jwt helpers", () => {
     expect(mapRealmRolesToUiRole(["DEVELOPER"])).toBe("developer");
     expect(mapRealmRolesToUiRole(["VIEWER"])).toBe("viewer");
     expect(mapRealmRolesToUiRole([])).toBe("developer");
+    expect(mapRealmRolesToUiRole(["USER", "ADMIN", "DEVELOPER"])).toBe("admin");
   });
 });

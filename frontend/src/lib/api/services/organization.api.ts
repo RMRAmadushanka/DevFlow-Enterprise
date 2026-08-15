@@ -10,10 +10,13 @@ import type {
   Organization,
   OrganizationListQuery,
   OrganizationPage,
+  PermissionDefinition,
+  PermissionMatrix,
   Team,
   TeamMembership,
   UpdateMemberRequest,
   UpdateOrganizationRequest,
+  UpdatePermissionMatrixRequest,
   UpdateTeamRequest,
 } from "../types/organization";
 
@@ -158,5 +161,30 @@ export const organizationApi = {
 
   removeTeamMember(teamId: string, userId: string): Promise<void> {
     return apiClient<void>(`/api/teams/${teamId}/members/${userId}`, { method: "DELETE" });
+  },
+
+  getPermissionMatrix(organizationId: string): Promise<PermissionMatrix> {
+    return apiClient<PermissionMatrix>(
+      `/api/organizations/${organizationId}/permission-matrix`
+    );
+  },
+
+  savePermissionMatrix(
+    organizationId: string,
+    body: UpdatePermissionMatrixRequest
+  ): Promise<PermissionMatrix> {
+    return apiClient<PermissionMatrix>(
+      `/api/organizations/${organizationId}/permission-matrix`,
+      { method: "PUT", body }
+    );
+  },
+
+  listMemberPermissions(
+    organizationId: string,
+    userId: string
+  ): Promise<PermissionDefinition[]> {
+    return apiClient<PermissionDefinition[]>(
+      `/api/organizations/${organizationId}/members/${userId}/permissions`
+    );
   },
 };

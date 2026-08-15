@@ -1,5 +1,4 @@
 import type { Role } from "@/lib/permissions";
-import type { Permission } from "@/lib/permissions";
 
 export type MemberStatus = "active" | "invited" | "suspended";
 
@@ -68,12 +67,12 @@ export interface OrgRoleDefinition {
   name: string;
   description: string;
   isSystem: boolean;
-  permissions: Permission[];
+  permissions: string[];
   userCount: number;
 }
 
 export interface PermissionMatrixRow {
-  permission: Permission;
+  permission: string;
   label: string;
   group: string;
   roles: Record<string, boolean>;

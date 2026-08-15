@@ -27,13 +27,15 @@ import {
   mapOrganizationApiError,
 } from "../utils/errors";
 import {
-  buildLivePermissionMatrix,
   buildLiveRoleDefinitions,
+  expandOrgPermissionCodes,
   toCreateOrganizationRequest,
   toOrganizationStats,
   toUiOrgRole,
   toUiOrganization,
+  toUiPermissionMatrix,
   toUpdateOrganizationRequest,
+  toUpdatePermissionMatrixRequest,
 } from "./organization-api.mappers";
 import { memberApiService } from "./member-api.service";
 
@@ -217,23 +219,45 @@ export const organizationApiService = {
   },
 
   async listRoles(orgId: string): Promise<OrgRoleDefinition[]> {
-    const [org, members] = await Promise.all([
+    const [org, members, matrix] = await Promise.all([
       this.getById(orgId),
       memberApiService.listMembers(orgId),
+      this.getPermissionMatrix(orgId),
     ]);
-    return buildLiveRoleDefinitions(org, members);
+    return buildLiveRoleDefinitions(org, members, matrix);
   },
 
-  async getPermissionMatrix(_orgId: string): Promise<PermissionMatrixState> {
-    return buildLivePermissionMatrix();
+  async getPermissionMatrix(orgId: string): Promise<PermissionMatrixState> {
+    try {
+      const matrix = await organizationApi.getPermissionMatrix(orgId);
+      return toUiPermissionMatrix(matrix);
+    } catch (error) {
+      mapError(error);
+    }
   },
 
   async savePermissionMatrix(
-    _orgId: string,
+    orgId: string,
     matrix: PermissionMatrixState
   ): Promise<PermissionMatrixState> {
-    /* Custom matrix persistence is not supported by organization-service yet. */
-    return matrix;
+    try {
+      const saved = await organizationApi.savePermissionMatrix(
+        orgId,
+        toUpdatePermissionMatrixRequest(matrix)
+      );
+      return toUiPermissionMatrix(saved);
+    } catch (error) {
+      mapError(error);
+    }
+  },
+
+  async listMemberPermissions(orgId: string, userId: string): Promise<string[]> {
+    try {
+      const permissions = await organizationApi.listMemberPermissions(orgId, userId);
+      return expandOrgPermissionCodes(permissions.map((permission) => permission.code));
+    } catch (error) {
+      mapError(error);
+    }
   },
 
   async duplicateRole(_orgId: string, _roleKey: string): Promise<OrgRoleDefinition> {

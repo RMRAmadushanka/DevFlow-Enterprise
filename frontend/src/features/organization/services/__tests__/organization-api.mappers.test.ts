@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { Membership, Organization } from "@/lib/api/types/organization";
 
 import {
+  expandOrgPermissionCodes,
   toBackendOrgRole,
   toUiInvitation,
   toUiMember,
   toUiOrgRole,
   toUiOrganization,
+  toUiPermissionMatrix,
+  toUpdatePermissionMatrixRequest,
 } from "../organization-api.mappers";
 
 const sampleOrg: Organization = {
@@ -82,5 +85,53 @@ describe("organization-api.mappers", () => {
     });
     expect(invite.status).toBe("pending");
     expect(invite.role).toBe("developer");
+  });
+
+  it("maps API permission matrix to UI grid and back", () => {
+    const ui = toUiPermissionMatrix({
+      roles: [
+        { code: "OWNER", name: "Owner" },
+        { code: "ADMIN", name: "Admin" },
+        { code: "MEMBER", name: "Member" },
+        { code: "GUEST", name: "Guest" },
+      ],
+      permissions: [
+        { code: "organization.read", name: "Read organization" },
+        { code: "role.manage", name: "Manage roles" },
+      ],
+      grants: [
+        { roleCode: "OWNER", permissionCodes: ["organization.read", "role.manage"] },
+        { roleCode: "ADMIN", permissionCodes: ["organization.read", "role.manage"] },
+        { roleCode: "MEMBER", permissionCodes: ["organization.read"] },
+        { roleCode: "GUEST", permissionCodes: ["organization.read"] },
+      ],
+      customized: false,
+    });
+
+    expect(ui.roles.map((role) => role.key)).toEqual(["owner", "admin", "developer", "viewer"]);
+    const roleManage = ui.rows.find((row) => row.permission === "role.manage");
+    expect(roleManage?.roles.owner).toBe(true);
+    expect(roleManage?.roles.developer).toBe(false);
+
+    const request = toUpdatePermissionMatrixRequest(ui);
+    expect(request.grants).toHaveLength(4);
+    expect(request.grants.find((grant) => grant.roleCode === "OWNER")?.permissionCodes).toEqual(
+      expect.arrayContaining(["organization.read", "role.manage"])
+    );
+    expect(request.grants.find((grant) => grant.roleCode === "MEMBER")?.permissionCodes).toEqual([
+      "organization.read",
+    ]);
+  });
+
+  it("expands org permission codes for UI guards", () => {
+    expect(expandOrgPermissionCodes(["organization.manage_members", "role.manage"])).toEqual(
+      expect.arrayContaining([
+        "organization.manage_members",
+        "member.invite",
+        "member.remove",
+        "member.update",
+        "role.manage",
+      ])
+    );
   });
 });

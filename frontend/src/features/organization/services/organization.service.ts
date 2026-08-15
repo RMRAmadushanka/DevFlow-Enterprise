@@ -375,6 +375,15 @@ const organizationServiceImpl = {
     return matrixOverrides[orgId];
   },
 
+  async listMemberPermissions(orgId: string, _userId: string): Promise<string[]> {
+    await delay();
+    const org = requireOrg(orgId);
+    const matrix = matrixOverrides[orgId] ?? buildMatrix(orgId);
+    return matrix.rows
+      .filter((row) => row.roles[org.myRole])
+      .map((row) => row.permission);
+  },
+
   async duplicateRole(orgId: string, roleKey: string): Promise<OrgRoleDefinition> {
     await delay();
     const roles = await this.listRoles(orgId);
