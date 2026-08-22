@@ -38,10 +38,13 @@ function shouldRetryOrganizationQuery(failureCount: number, error: Error): boole
 
 export function useOrganizations(params?: { q?: string; enabled?: boolean }) {
   const setOrganizations = useOrganizationStore((s) => s.setOrganizations);
+  const enabled = params?.enabled ?? true;
+  const listParams = params?.q ? { q: params.q } : undefined;
   const query = useQuery({
-    queryKey: organizationKeys.list(params),
-    queryFn: () => organizationService.list(params),
-    enabled: params?.enabled ?? true,
+    // Do not put `enabled` in the key — shell + switcher must share one cache entry.
+    queryKey: organizationKeys.list(listParams),
+    queryFn: () => organizationService.list(listParams),
+    enabled,
     retry: shouldRetryOrganizationQuery,
   });
 

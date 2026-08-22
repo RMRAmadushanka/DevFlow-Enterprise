@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { routes } from "@/config/routes";
 import { cn } from "@/lib/utils";
 
+import { useAuthStore } from "@/features/auth/store/auth.store";
+
 import { useOrganizations } from "../hooks/use-organizations";
 import { useOrganizationStore } from "../store/organization.store";
 
@@ -28,7 +30,10 @@ export interface OrganizationSwitcherProps {
 
 function OrganizationSwitcher({ collapsed, className }: OrganizationSwitcherProps) {
   const router = useRouter();
-  const { data: organizations = [], isLoading } = useOrganizations();
+  const authStatus = useAuthStore((s) => s.status);
+  const { data: organizations = [], isLoading } = useOrganizations({
+    enabled: authStatus === "authenticated",
+  });
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId);
   const switchOrganization = useOrganizationStore((s) => s.switchOrganization);
   const switcherOpen = useOrganizationStore((s) => s.switcherOpen);

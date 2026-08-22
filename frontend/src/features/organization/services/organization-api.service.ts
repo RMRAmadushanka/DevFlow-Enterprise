@@ -5,6 +5,7 @@
 
 import { ApiError, organizationApi, userApi } from "@/lib/api";
 import type { Organization as ApiOrganization } from "@/lib/api/types/organization";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 
 import type {
   CreateOrganizationPayload,
@@ -54,8 +55,16 @@ async function resolveMyRoleFromMembers(
 
 let cachedMeId: string | null | undefined;
 
+/** Prefer the already-hydrated auth store so org list does not re-hit /api/users/me. */
 async function currentUserId(): Promise<string | null> {
   if (cachedMeId !== undefined) return cachedMeId;
+
+  const fromStore = useAuthStore.getState().user?.id;
+  if (fromStore && fromStore !== "unknown") {
+    cachedMeId = fromStore;
+    return cachedMeId;
+  }
+
   try {
     const me = await userApi.me();
     cachedMeId = me.id;
@@ -64,6 +73,10 @@ async function currentUserId(): Promise<string | null> {
     cachedMeId = null;
     return null;
   }
+}
+
+export function resetOrganizationApiUserCache(): void {
+  cachedMeId = undefined;
 }
 
 async function hydrateOrganization(org: ApiOrganization): Promise<Organization> {
@@ -77,11 +90,33 @@ async function hydrateOrganization(org: ApiOrganization): Promise<Organization> 
   }
 }
 
+/** One call for all membership roles — avoids N× /members when listing orgs. */
+async function roleByOrganizationId(): Promise<Map<string, Organization["myRole"]>> {
+  const meId = await currentUserId();
+  if (!meId) return new Map();
+  try {
+    const page = await userApi.getOrganizations(meId, { page: 0, size: 100 });
+    return new Map(
+      page.items.map((summary) => [summary.id, toUiOrgRole(summary.role)] as const)
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 export const organizationApiService = {
   async list(params?: { q?: string }): Promise<Organization[]> {
     try {
-      const page = await organizationApi.list({ page: 0, size: 100 });
-      const orgs = await Promise.all(page.items.map((org) => hydrateOrganization(org)));
+      const [page, roles] = await Promise.all([
+        organizationApi.list({ page: 0, size: 100 }),
+        roleByOrganizationId(),
+      ]);
+      const orgs = page.items.map((org) =>
+        toUiOrganization(org, {
+          myRole: roles.get(org.id) ?? "developer",
+          memberCount: 0,
+        })
+      );
       const q = params?.q?.trim().toLowerCase();
       if (!q) return orgs;
       return orgs.filter(
@@ -160,8 +195,9 @@ export const organizationApiService = {
 
   async leave(id: string): Promise<void> {
     try {
-      const me = await userApi.me();
-      await organizationApi.removeMember(id, me.id);
+      const meId = await currentUserId();
+      if (!meId) throw new OrganizationPermissionError("Not signed in");
+      await organizationApi.removeMember(id, meId);
     } catch (error) {
       mapError(error);
     }

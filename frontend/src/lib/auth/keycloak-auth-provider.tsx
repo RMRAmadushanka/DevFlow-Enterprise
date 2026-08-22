@@ -8,9 +8,9 @@ import { setUnauthorizedHandler } from "@/lib/api";
 import {
   buildSessionIfAuthenticated,
   clearAuthMarkerCookie,
-  clearOidcSessionArtifacts,
   isAuthenticated,
   isKeycloakEnabled,
+  isLogoutInProgress,
   toLibAuthSession,
 } from "@/lib/auth/keycloak";
 import { registerClientSessionProvider } from "@/lib/auth/session";
@@ -38,7 +38,6 @@ export function useKeycloakAuthInit(): KeycloakAuthContextValue {
  */
 export function KeycloakAuthProvider({ children }: { children: React.ReactNode }) {
   const setSession = useAuthStore((s) => s.setSession);
-  const logoutStore = useAuthStore((s) => s.logout);
   const [initStatus, setInitStatus] = React.useState<AuthInitStatus>(() =>
     isKeycloakEnabled() ? "initializing" : "ready"
   );
@@ -58,15 +57,19 @@ export function KeycloakAuthProvider({ children }: { children: React.ReactNode }
     });
 
     setUnauthorizedHandler(() => {
+      if (isLogoutInProgress()) return;
       // API 401 must not destroy a live Keycloak adapter session.
       // Doing so sent /login back into keycloak.login() and looped
       // callback → dashboard → login.
       if (isKeycloakEnabled() && isAuthenticated()) {
         return;
       }
-      clearOidcSessionArtifacts();
+
+      // Mark signing-out first so the shell shows loading instead of
+      // "Sign in required", then hard-navigate — do not clear the user store
+      // before unload (that paint is the flash on token expiry).
+      useAuthStore.getState().beginSignOut();
       clearAuthMarkerCookie();
-      logoutStore();
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
         if (path.startsWith("/login") || path.startsWith("/auth/")) {
@@ -78,7 +81,7 @@ export function KeycloakAuthProvider({ children }: { children: React.ReactNode }
           params.set("next", next);
         }
         const qs = params.toString();
-        window.location.assign(qs ? `/login?${qs}` : "/login");
+        window.location.replace(qs ? `/login?${qs}` : "/login");
       }
     });
 
@@ -86,7 +89,7 @@ export function KeycloakAuthProvider({ children }: { children: React.ReactNode }
       registerClientSessionProvider(null);
       setUnauthorizedHandler(null);
     };
-  }, [logoutStore]);
+  }, []);
 
   React.useEffect(() => {
     if (!isKeycloakEnabled()) {

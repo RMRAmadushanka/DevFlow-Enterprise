@@ -14,21 +14,26 @@ import { useAuthStore } from "../store/auth.store";
 export function useLogout() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const beginSignOut = useAuthStore((s) => s.beginSignOut);
   const logoutStore = useAuthStore((s) => s.logout);
 
   const mutation = useMutation({
     mutationKey: [...authKeys.all, "logout"],
-    mutationFn: () => authService.logout(),
+    mutationFn: async () => {
+      beginSignOut();
+      await authService.logout();
+    },
     onSuccess: async () => {
+      // Keycloak performs a full-page redirect; clearing React state here
+      // briefly renders "Sign in required" before navigation completes.
+      if (isKeycloakEnabled()) {
+        return;
+      }
       logoutStore();
       await queryClient.removeQueries({ queryKey: authKeys.all });
       await queryClient.clear();
       toast.success("Signed out");
-
-      // Keycloak logout redirects via the adapter; mock returns here.
-      if (!isKeycloakEnabled()) {
-        router.replace(routes.auth.login);
-      }
+      router.replace(routes.auth.login);
     },
   });
 

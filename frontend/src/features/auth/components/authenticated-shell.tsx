@@ -35,16 +35,18 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const { isLoading, isFetched } = useSessionBootstrap();
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
+  const isSigningOut = useAuthStore((s) => s.isSigningOut);
   const permissions = useAuthStore((s) => s.permissions);
   const { logout, isPending } = useLogout();
+  const endingSession = isPending || isSigningOut;
   const { data: organizations = [] } = useOrganizations({
-    enabled: status === "authenticated",
+    enabled: status === "authenticated" && !endingSession,
   });
   const currentOrganizationId = useOrganizationStore((s) => s.currentOrganizationId);
   const switchOrganization = useOrganizationStore((s) => s.switchOrganization);
   const sessionOrganizationId = useAuthStore((s) => s.organizationId);
   const { data: projectsResult } = useProjects({
-    enabled: status === "authenticated",
+    enabled: status === "authenticated" && !endingSession,
   });
 
   const activeOrganizationId =
@@ -102,10 +104,11 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   );
 
   React.useEffect(() => {
+    if (endingSession) return;
     if (!isFetched || status !== "anonymous") return;
     if (isKeycloakEnabled() && isAuthenticated()) return;
     router.replace(`${routes.auth.login}?next=${encodeURIComponent(pathname)}`);
-  }, [isFetched, status, router, pathname]);
+  }, [isFetched, status, router, pathname, endingSession]);
 
   React.useEffect(() => {
     if (currentOrganizationId) return;
@@ -121,7 +124,7 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     switchOrganization,
   ]);
 
-  if (initStatus === "initializing" || isLoading || status === "unknown") {
+  if (initStatus === "initializing" || isLoading || status === "unknown" || endingSession) {
     return <AuthLoading />;
   }
 

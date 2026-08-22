@@ -30,12 +30,13 @@ vi.mock("@/lib/api", async () => {
     userApi: {
       me: vi.fn(),
       getById: vi.fn(),
+      getOrganizations: vi.fn(),
     },
   };
 });
 
 import { organizationApi, userApi } from "@/lib/api";
-import { organizationApiService } from "../organization-api.service";
+import { organizationApiService, resetOrganizationApiUserCache } from "../organization-api.service";
 import { memberApiService } from "../member-api.service";
 
 const sampleOrg = {
@@ -51,6 +52,7 @@ const sampleOrg = {
 
 describe("organizationApiService", () => {
   beforeEach(() => {
+    resetOrganizationApiUserCache();
     vi.mocked(userApi.me).mockResolvedValue({
       id: "u-me",
       externalIdentityId: "sub",
@@ -61,6 +63,13 @@ describe("organizationApiService", () => {
       notifyInApp: true,
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    vi.mocked(userApi.getOrganizations).mockResolvedValue({
+      items: [{ id: "org1", name: "Acme", slug: "acme", role: "OWNER" }],
+      page: 0,
+      pageSize: 100,
+      totalElements: 1,
+      totalPages: 1,
     });
     vi.mocked(organizationApi.listMembers).mockResolvedValue({
       items: [
@@ -109,7 +118,8 @@ describe("organizationApiService", () => {
     const result = await organizationApiService.list();
     expect(result).toHaveLength(1);
     expect(result[0]?.myRole).toBe("owner");
-    expect(result[0]?.memberCount).toBe(1);
+    expect(userApi.getOrganizations).toHaveBeenCalled();
+    expect(organizationApi.listMembers).not.toHaveBeenCalled();
   });
 
   it("creates organization via API", async () => {

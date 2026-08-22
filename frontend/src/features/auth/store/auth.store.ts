@@ -16,10 +16,13 @@ interface AuthState {
   organizationId: string | null;
   permissions: string[];
   sessionId: string | null;
+  /** True while logout / session-expiry redirect is in flight — avoids "Sign in required" flash. */
+  isSigningOut: boolean;
   setSession: (session: AuthSessionInfo | null) => void;
   setUser: (user: AuthUserProfile | null) => void;
   setPermissions: (permissions: string[]) => void;
   updateProfile: (patch: Partial<AuthUserProfile>) => void;
+  beginSignOut: () => void;
   logout: () => void;
 }
 
@@ -29,6 +32,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   organizationId: null,
   permissions: [],
   sessionId: null,
+  isSigningOut: false,
   setSession: (session) =>
     set(
       session
@@ -38,6 +42,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
             organizationId: session.organizationId,
             permissions: session.permissions,
             sessionId: session.sessionId,
+            isSigningOut: false,
           }
         : {
             status: "anonymous",
@@ -45,6 +50,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
             organizationId: null,
             permissions: [],
             sessionId: null,
+            isSigningOut: false,
           }
     ),
   setUser: (user) => set({ user, status: user ? "authenticated" : "anonymous" }),
@@ -64,6 +70,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
           }
         : state
     ),
+  beginSignOut: () => set({ isSigningOut: true }),
   logout: () =>
     set({
       status: "anonymous",
@@ -71,5 +78,6 @@ export const useAuthStore = create<AuthState>()((set) => ({
       organizationId: null,
       permissions: [],
       sessionId: null,
+      isSigningOut: false,
     }),
 }));

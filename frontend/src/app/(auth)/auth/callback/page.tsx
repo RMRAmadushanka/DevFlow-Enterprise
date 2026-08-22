@@ -10,7 +10,7 @@ import { useAuthStore } from "@/features/auth/store/auth.store";
 import { oidcAuthService } from "@/features/auth/services/oidc-auth.service";
 import { toAuthErrorMessage } from "@/features/auth/utils/errors";
 import { AuthLoading, useKeycloakAuthInit } from "@/lib/auth/keycloak-auth-provider";
-import { isAuthenticated } from "@/lib/auth/keycloak";
+import { consumePostLoginNext, isAuthenticated } from "@/lib/auth/keycloak";
 import { safeInternalPath } from "@/lib/navigation/safe-internal-path";
 
 function AuthCallbackContent() {
@@ -43,6 +43,16 @@ function AuthCallbackContent() {
       }
 
       try {
+        // KeycloakAuthProvider already hydrates the profile once during init.
+        // Reuse that session when present so we do not call /me again.
+        const existing = useAuthStore.getState();
+        if (existing.status === "authenticated" && existing.user) {
+          if (cancelled) return;
+          const target = safeInternalPath(consumePostLoginNext(), routes.app.dashboard);
+          router.replace(target);
+          return;
+        }
+
         const { session, next } = await oidcAuthService.completeLoginFromCallback();
         if (cancelled) return;
         setSession(session);

@@ -4,11 +4,11 @@ import {
   beginRegisterRedirect,
   buildSessionIfAuthenticated,
   clearAuthMarkerCookie,
-  clearOidcSessionArtifacts,
   completeLoginAfterRedirect,
   isKeycloakEnabled,
   keycloakLogout,
 } from "@/lib/auth/keycloak";
+import { resetOrganizationApiUserCache } from "@/features/organization/services/organization-api.service";
 import type { AuthSessionInfo } from "../types/auth.types";
 import { AuthenticationError } from "../utils/errors";
 
@@ -48,8 +48,10 @@ export const oidcAuthService = {
   },
 
   async logout(): Promise<void> {
-    clearOidcSessionArtifacts();
+    resetOrganizationApiUserCache();
     clearAuthMarkerCookie();
+    // Do not clearKeycloakTokens() before logout — adapter needs them for RP logout,
+    // and wiping the store/tokens early flashes "Sign in required" in the shell.
     await keycloakLogout();
   },
 };

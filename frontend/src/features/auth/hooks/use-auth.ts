@@ -22,12 +22,16 @@ import { useLogout } from "./use-logout";
 export function useAuth() {
   const user = useAuthStore((s) => s.user);
   const status = useAuthStore((s) => s.status);
+  const isSigningOut = useAuthStore((s) => s.isSigningOut);
   const permissions = useAuthStore((s) => s.permissions);
   const { initStatus, isKeycloak } = useKeycloakAuthInit();
   const { logout, isPending: logoutPending } = useLogout();
 
   const isLoading =
-    initStatus === "initializing" || status === "unknown" || logoutPending;
+    initStatus === "initializing" ||
+    status === "unknown" ||
+    logoutPending ||
+    isSigningOut;
   const isAuthenticated = status === "authenticated" && Boolean(user);
   const token = getAccessToken();
 

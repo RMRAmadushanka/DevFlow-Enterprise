@@ -3,34 +3,45 @@
 import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
-import { isAuthenticated, isKeycloakEnabled } from "@/lib/auth/keycloak";
+import { isKeycloakEnabled } from "@/lib/auth/keycloak";
 
 import { authKeys } from "../constants/auth.constants";
 import { authService } from "../services/auth.service";
 import { useAuthStore } from "../store/auth.store";
 
-/** Hydrates the auth store from Keycloak / mock session on mount. */
+/**
+ * Hydrates the auth store from mock session on mount.
+ * When Keycloak is enabled, KeycloakAuthProvider owns hydration — this hook
+ * only mirrors store readiness so we do not re-call /api/auth/me + /api/users/me.
+ */
 export function useSessionBootstrap() {
   const setSession = useAuthStore((s) => s.setSession);
+  const status = useAuthStore((s) => s.status);
+  const keycloak = isKeycloakEnabled();
 
   const query = useQuery({
     queryKey: authKeys.session(),
     queryFn: () => authService.getSession(),
-    staleTime: 30_000,
+    staleTime: 60_000,
+    enabled: !keycloak,
   });
 
   React.useEffect(() => {
+    if (keycloak) return;
     if (!query.isSuccess) return;
-    if (query.data) {
-      setSession(query.data);
-      return;
-    }
-    // A null session must not wipe a live Keycloak adapter session.
-    if (isKeycloakEnabled() && isAuthenticated()) {
-      return;
-    }
-    setSession(null);
-  }, [query.isSuccess, query.data, setSession]);
+    setSession(query.data);
+  }, [keycloak, query.isSuccess, query.data, setSession]);
+
+  if (keycloak) {
+    const ready = status !== "unknown";
+    return {
+      ...query,
+      isLoading: !ready,
+      isFetched: ready,
+      isSuccess: ready,
+      data: undefined,
+    };
+  }
 
   return query;
 }

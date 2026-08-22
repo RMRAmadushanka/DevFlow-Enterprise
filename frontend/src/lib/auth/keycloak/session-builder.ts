@@ -84,45 +84,28 @@ export async function fetchCurrentUserBundle(accessToken: string): Promise<{
   profile: AuthUserProfile;
   organizationId: string;
 }> {
-  let authMe: CurrentUser | null = null;
-  let appUser: User | null = null;
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+  } as const;
 
-  try {
-    authMe = await apiClient<CurrentUser>("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+  const [authMeResult, appUserResult] = await Promise.allSettled([
+    apiClient<CurrentUser>("/api/auth/me", {
+      headers: authHeaders,
       skipAuthHandler: true,
-    });
-  } catch {
-    authMe = null;
-  }
-
-  try {
-    appUser = await apiClient<User>("/api/users/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+    apiClient<User>("/api/users/me", {
+      headers: authHeaders,
       skipAuthHandler: true,
-    });
-  } catch {
-    appUser = null;
-  }
+    }),
+  ]);
 
-  let organizationId = "";
-  if (appUser?.id) {
-    try {
-      const orgs = await apiClient<{
-        items: Array<{ id: string }>;
-      }>(`/api/users/${appUser.id}/organizations`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        skipAuthHandler: true,
-        query: { page: 0, size: 1 },
-      });
-      organizationId = orgs.items[0]?.id ?? "";
-    } catch {
-      organizationId = "";
-    }
-  }
+  const authMe = authMeResult.status === "fulfilled" ? authMeResult.value : null;
+  const appUser = appUserResult.status === "fulfilled" ? appUserResult.value : null;
 
+  // Prefer the organizations list query for the active org — avoid an extra
+  // /users/{id}/organizations?size=1 probe on every session hydrate.
   return {
     profile: profileFromClaims(accessToken, appUser, authMe),
-    organizationId,
+    organizationId: "",
   };
 }

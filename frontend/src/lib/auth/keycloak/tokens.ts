@@ -55,6 +55,12 @@ export async function refreshAccessToken(minValidity = 30): Promise<AccessTokenR
       await kc.updateToken(minValidity);
       return kc.token ? { accessToken: kc.token } : null;
     } catch {
+      // Refresh failed (expired/revoked) — drop local tokens so 401 handling can redirect.
+      try {
+        getKeycloak().clearToken();
+      } catch {
+        // ignore
+      }
       return null;
     } finally {
       refreshInFlight = null;

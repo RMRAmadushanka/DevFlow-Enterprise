@@ -39,6 +39,15 @@ export { consumePostLoginNext, persistPostLoginNext } from "./redirect-state";
 
 export function clearOidcSessionArtifacts(): void {
   clearKeycloakTokens();
+  hydrateInFlight = null;
+  lastHydratedSession = null;
+}
+
+/** True while Keycloak RP-initiated logout redirect is in flight. */
+let logoutInProgress = false;
+
+export function isLogoutInProgress(): boolean {
+  return logoutInProgress;
 }
 
 export async function ensureKeycloakReady(): Promise<boolean> {
@@ -46,15 +55,43 @@ export async function ensureKeycloakReady(): Promise<boolean> {
   return initKeycloak();
 }
 
+/** Coalesce concurrent post-login hydrations (provider + callback + Strict Mode). */
+let hydrateInFlight: Promise<AuthSessionInfo | null> | null = null;
+/** Survives Strict Mode remounts so we do not re-hit /me after a successful hydrate. */
+let lastHydratedSession: { tokenTail: string; session: AuthSessionInfo } | null = null;
+
+function tokenTail(token: string): string {
+  return token.length <= 48 ? token : token.slice(-48);
+}
+
 async function hydrateSession(): Promise<AuthSessionInfo | null> {
   const accessToken = getAccessToken();
   if (!accessToken) return null;
-  const refreshed = await refreshAccessToken(30);
-  const token = refreshed?.accessToken ?? accessToken;
-  const { profile, organizationId } = await fetchCurrentUserBundle(token);
-  const session = toAuthSessionInfo(profile, organizationId);
-  setAuthMarkerCookie();
-  return session;
+
+  const cached = lastHydratedSession;
+  if (cached && cached.tokenTail === tokenTail(accessToken)) {
+    return cached.session;
+  }
+
+  if (hydrateInFlight) return hydrateInFlight;
+
+  hydrateInFlight = (async () => {
+    const refreshed = await refreshAccessToken(30);
+    const token = refreshed?.accessToken ?? accessToken;
+    const existing = lastHydratedSession;
+    if (existing && existing.tokenTail === tokenTail(token)) {
+      return existing.session;
+    }
+    const { profile, organizationId } = await fetchCurrentUserBundle(token);
+    const session = toAuthSessionInfo(profile, organizationId);
+    setAuthMarkerCookie();
+    lastHydratedSession = { tokenTail: tokenTail(token), session };
+    return session;
+  })().finally(() => {
+    hydrateInFlight = null;
+  });
+
+  return hydrateInFlight;
 }
 
 /** Redirect to Keycloak login — does not return. */
@@ -125,7 +162,11 @@ export async function completeLoginAfterRedirect(): Promise<{
 
 export async function keycloakLogout(): Promise<void> {
   const config = getKeycloakConfig();
+  logoutInProgress = true;
   clearAuthMarkerCookie();
+  // Keep adapter tokens until logout() runs — it needs id_token_hint.
+  hydrateInFlight = null;
+  lastHydratedSession = null;
   try {
     await ensureKeycloakReady();
     await getKeycloak().logout({
