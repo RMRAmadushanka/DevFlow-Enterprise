@@ -10,6 +10,7 @@ import { routes } from "@/config/routes";
 import { sprintKeys } from "../constants/sprint.constants";
 import { backlogService } from "../services/backlog.service";
 import { releaseService } from "../services/release.service";
+import { isSprintApiEnabled } from "../services/sprint-api.service";
 import { sprintService } from "../services/sprint.service";
 import { useSprintStore } from "../store/sprint.store";
 import type { CreateSprintPayload, UpdateSprintPayload } from "../types/sprint.types";
@@ -191,12 +192,24 @@ export function useReleases(projectId?: string | null) {
   });
 }
 
-export function useVelocityHistory() {
+export function useSprintActivity(sprintId: string | undefined) {
   return useQuery({
-    queryKey: [...sprintKeys.all, "velocity-history"],
+    queryKey: [...sprintKeys.detail(sprintId ?? "unknown"), "activity"],
+    queryFn: () => sprintService.activity(sprintId!),
+    enabled: Boolean(sprintId),
+  });
+}
+
+export function useVelocityHistory(projectId: string | undefined) {
+  return useQuery({
+    queryKey: [...sprintKeys.all, "velocity-history", projectId ?? "unknown"],
     queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 200));
-      return sprintService.velocityHistory();
+      if (!isSprintApiEnabled()) {
+        // Artificial delay to surface loading state — the mock resolves synchronously.
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return sprintService.velocityHistory(projectId);
     },
+    enabled: Boolean(projectId),
   });
 }

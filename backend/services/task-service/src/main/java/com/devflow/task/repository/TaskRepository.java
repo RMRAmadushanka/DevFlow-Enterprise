@@ -28,6 +28,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
               AND (:assigneeId IS NULL OR t.assigneeId = :assigneeId)
               AND (:reporterId IS NULL OR t.reporterId = :reporterId)
               AND (:sprintId IS NULL OR t.sprintId = :sprintId)
+              AND (:unassigned IS NULL OR :unassigned = FALSE OR t.sprintId IS NULL)
               AND (:archived IS NULL OR t.archived = :archived)
               AND (
                 :search IS NULL OR :search = '' OR
@@ -44,8 +45,24 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             @Param("assigneeId") UUID assigneeId,
             @Param("reporterId") UUID reporterId,
             @Param("sprintId") UUID sprintId,
+            @Param("unassigned") Boolean unassigned,
             @Param("archived") Boolean archived,
             @Param("search") String search,
             Pageable pageable
     );
+
+    /**
+     * Single aggregate query for sprint-level task/points rollups (no in-memory summing).
+     * Row order: taskCount, completedTaskCount, committedPoints, completedPoints.
+     */
+    @Query("""
+            SELECT
+                COUNT(t),
+                SUM(CASE WHEN t.status = :doneStatus THEN 1 ELSE 0 END),
+                COALESCE(SUM(COALESCE(t.storyPoints, 0)), 0),
+                COALESCE(SUM(CASE WHEN t.status = :doneStatus THEN COALESCE(t.storyPoints, 0) ELSE 0 END), 0)
+            FROM Task t
+            WHERE t.sprintId = :sprintId
+            """)
+    List<Object[]> sprintSummaryRaw(@Param("sprintId") UUID sprintId, @Param("doneStatus") TaskStatus doneStatus);
 }

@@ -532,9 +532,17 @@ const mockSprintService = {
     };
   },
 
-  velocityHistory(): Array<{ label: string; committed: number; completed: number }> {
+  async activity(id: string): Promise<SprintDetail["activity"]> {
+    await delay();
+    const sprint = sprints.find((item) => item.id === id);
+    if (!sprint) throw new SprintNotFoundError();
+    return toDetail(sprint).activity;
+  },
+
+  velocityHistory(projectId?: string): Array<{ label: string; committed: number; completed: number }> {
     return sprints
       .filter((s) => s.status === "completed" || s.status === "active")
+      .filter((s) => !projectId || s.projectId === projectId)
       .slice(0, 5)
       .reverse()
       .map((s) => ({

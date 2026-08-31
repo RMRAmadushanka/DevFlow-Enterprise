@@ -14,14 +14,18 @@ import type {
   SprintListResult,
   SprintSortField,
   UpdateSprintPayload,
+  VelocityPoint,
 } from "../types/sprint.types";
 import {
   SprintNotFoundError,
   SprintValidationError,
 } from "../utils/errors";
 import {
+  dtoToPlanningState,
   dtoToSprint,
+  dtoToSprintActivity,
   dtoToSprintDetail,
+  dtoToVelocityPoint,
   filtersToQuery,
   isUuid,
 } from "./sprint-api.mappers";
@@ -88,7 +92,12 @@ export const sprintApiService = {
 
   async getById(id: string): Promise<SprintDetail> {
     const dto = await call(() => sprintApi.getSprint(id));
-    return dtoToSprintDetail(dto);
+    // Burndown is a secondary chart data source — don't let it fail the whole sprint load.
+    const burndown = await sprintApi.getBurndown(id).catch((error) => {
+      console.error("Failed to load sprint burndown", error);
+      return [];
+    });
+    return dtoToSprintDetail(dto, burndown);
   },
 
   async create(payload: CreateSprintPayload): Promise<SprintDetail> {
@@ -145,15 +154,18 @@ export const sprintApiService = {
   },
 
   async start(id: string): Promise<SprintDetail> {
-    return this.update(id, { status: "active" });
+    const dto = await call(() => sprintApi.startSprint(id));
+    return dtoToSprintDetail(dto);
   },
 
   async complete(id: string): Promise<SprintDetail> {
-    return this.update(id, { status: "completed" });
+    const dto = await call(() => sprintApi.completeSprint(id));
+    return dtoToSprintDetail(dto);
   },
 
   async archive(id: string): Promise<SprintDetail> {
-    return this.update(id, { archived: true, status: "archived" });
+    const dto = await call(() => sprintApi.archiveSprint(id));
+    return dtoToSprintDetail(dto);
   },
 
   async delete(id: string): Promise<void> {
@@ -174,20 +186,28 @@ export const sprintApiService = {
     });
   },
 
-  async planning(_sprintId: string): Promise<PlanningState> {
-    return {
-      backlog: [],
-      sprintTasks: [],
-      capacityPoints: 0,
-      allocatedPoints: 0,
-    };
+  async planning(sprintId: string): Promise<PlanningState> {
+    const dto = await call(() => sprintApi.getPlanning(sprintId));
+    return dtoToPlanningState(dto);
   },
 
-  async moveTasksToSprint(sprintId: string, _taskIds: string[]): Promise<PlanningState> {
-    return this.planning(sprintId);
+  async moveTasksToSprint(sprintId: string, taskIds: string[]): Promise<PlanningState> {
+    // The move-tasks endpoint requires the owning projectId, which isn't available
+    // at existing call sites — resolve it from the sprint itself.
+    const sprint = await call(() => sprintApi.getSprint(sprintId));
+    const dto = await call(() =>
+      sprintApi.moveTasksToSprint(sprintId, taskIds, sprint.projectId)
+    );
+    return dtoToPlanningState(dto);
   },
 
-  velocityHistory(): Array<{ label: string; committed: number; completed: number }> {
-    return [];
+  async velocityHistory(projectId: string): Promise<VelocityPoint[]> {
+    const points = await call(() => sprintApi.getVelocityHistory(projectId));
+    return points.map(dtoToVelocityPoint);
+  },
+
+  async activity(sprintId: string): Promise<SprintDetail["activity"]> {
+    const items = await call(() => sprintApi.getActivity(sprintId));
+    return items.map(dtoToSprintActivity);
   },
 };

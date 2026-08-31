@@ -65,3 +65,57 @@ export interface SprintListQuery {
 }
 
 export type SprintPage = import("./envelope").PageResponse<SprintDto>;
+
+export interface SprintStatusUpdateRequest {
+  status: string;
+}
+
+export interface BurndownPointDto {
+  date: string;
+  remainingPoints: number;
+  idealPoints: number;
+  completedPoints: number;
+  synthesized: boolean;
+}
+
+export interface VelocityPointDto {
+  sprintId: string;
+  sprintName: string;
+  endDate: string;
+  committedPoints: number;
+  completedPoints: number;
+}
+
+export interface BacklogItemDto {
+  id: string;
+  key: string;
+  title: string;
+  priority: string;
+  status: string;
+  storyPoints: number | null;
+  epicName?: string | null;
+  sprintId: string | null;
+  assigneeName?: string | null;
+  projectId: string;
+}
+
+export interface PlanningStateDto {
+  backlog: BacklogItemDto[];
+  sprintTasks: BacklogItemDto[];
+  capacityPoints: number;
+  allocatedPoints: number;
+}
+
+export interface MoveTasksToSprintRequest {
+  taskIds: string[];
+  projectId: string;
+}
+
+export interface SprintActivityDto {
+  id: string;
+  actorId: string | null;
+  actorName: string | null;
+  type: string;
+  summary: string;
+  createdAt: string;
+}

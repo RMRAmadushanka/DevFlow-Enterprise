@@ -3,18 +3,23 @@ package com.devflow.task.service;
 import com.devflow.common.dto.PageResponse;
 import com.devflow.common.security.SecurityContextUtils;
 import com.devflow.task.dto.ActivityResponse;
+import com.devflow.task.dto.BulkMoveResponse;
+import com.devflow.task.dto.BulkMoveToSprintRequest;
 import com.devflow.task.dto.ChecklistItemResponse;
 import com.devflow.task.dto.CreateTaskRequest;
 import com.devflow.task.dto.RelationResponse;
 import com.devflow.task.dto.TaskDetailResponse;
 import com.devflow.task.dto.TaskLabelDto;
 import com.devflow.task.dto.TaskResponse;
+import com.devflow.task.dto.TaskSprintSummaryResponse;
 import com.devflow.task.dto.TaskUserDto;
 import com.devflow.task.dto.TimeTrackingResponse;
 import com.devflow.task.dto.UpdateTaskRequest;
 import com.devflow.task.entity.Task;
 import com.devflow.task.entity.TaskPriority;
 import com.devflow.task.entity.TaskStatus;
+import com.devflow.task.events.TaskEventPublisher;
+import com.devflow.task.events.TaskEventType;
 import com.devflow.task.exception.TaskNotFoundException;
 import com.devflow.task.exception.TaskValidationException;
 import com.devflow.task.mapper.TaskMapper;
@@ -28,9 +33,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -42,6 +51,7 @@ public class TaskService {
     private final TaskActivityService activityService;
     private final TaskChecklistService checklistService;
     private final TaskRelationService relationService;
+    private final TaskEventPublisher eventPublisher;
 
     public TaskService(
             TaskRepository taskRepository,
@@ -49,7 +59,8 @@ public class TaskService {
             TaskMapper taskMapper,
             TaskActivityService activityService,
             TaskChecklistService checklistService,
-            TaskRelationService relationService
+            TaskRelationService relationService,
+            TaskEventPublisher eventPublisher
     ) {
         this.taskRepository = taskRepository;
         this.taskCounterRepository = taskCounterRepository;
@@ -57,6 +68,7 @@ public class TaskService {
         this.activityService = activityService;
         this.checklistService = checklistService;
         this.relationService = relationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -109,14 +121,25 @@ public class TaskService {
 
         Task saved = taskRepository.save(task);
         checklistService.createInitialItems(saved.getId(), checklist);
+        UUID actorId = ActorSupport.currentUserIdOrNull();
         activityService.record(
                 saved.getId(),
-                ActorSupport.currentUserIdOrNull(),
+                actorId,
                 ActorSupport.currentName(),
                 TaskActivityService.TYPE_CREATED,
                 "created this task",
                 null
         );
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("taskId", saved.getId().toString());
+        payload.put("projectId", saved.getProjectId() == null ? null : saved.getProjectId().toString());
+        payload.put("sprintId", saved.getSprintId() == null ? null : saved.getSprintId().toString());
+        payload.put("status", saved.getStatus().name());
+        payload.put("storyPoints", saved.getStoryPoints());
+        payload.put("actorUserId", actorId == null ? null : actorId.toString());
+        eventPublisher.publish(TaskEventType.TASK_CREATED, saved.getId().toString(), payload);
+
         return taskMapper.toResponse(saved);
     }
 
@@ -167,6 +190,7 @@ public class TaskService {
             UUID assigneeId,
             UUID reporterId,
             UUID sprintId,
+            Boolean unassigned,
             Boolean archived,
             String search,
             Integer page,
@@ -193,6 +217,7 @@ public class TaskService {
                 assigneeId,
                 reporterId,
                 sprintId,
+                unassigned,
                 archivedFilter,
                 search,
                 pageable
@@ -217,6 +242,7 @@ public class TaskService {
         UUID previousAssigneeId = task.getAssigneeId();
         String previousAssigneeName = task.getAssigneeName();
         UUID previousSprintId = task.getSprintId();
+        Integer previousStoryPoints = task.getStoryPoints();
         boolean changed = false;
         boolean statusChanged = false;
         boolean assignedChanged = false;
@@ -342,15 +368,93 @@ public class TaskService {
         if (changed) {
             recordUpdateActivity(saved, statusChanged, assignedChanged, moved);
         }
+
+        UUID actorId = ActorSupport.currentUserIdOrNull();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("taskId", saved.getId().toString());
+        payload.put("projectId", saved.getProjectId() == null ? null : saved.getProjectId().toString());
+        payload.put("previousSprintId", previousSprintId == null ? null : previousSprintId.toString());
+        payload.put("sprintId", saved.getSprintId() == null ? null : saved.getSprintId().toString());
+        payload.put("previousStatus", previousStatus == null ? null : previousStatus.name());
+        payload.put("status", saved.getStatus().name());
+        payload.put("previousStoryPoints", previousStoryPoints);
+        payload.put("storyPoints", saved.getStoryPoints());
+        payload.put("actorUserId", actorId == null ? null : actorId.toString());
+        eventPublisher.publish(TaskEventType.TASK_UPDATED, saved.getId().toString(), payload);
+
         return taskMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(UUID taskId) {
-        if (!taskRepository.existsById(taskId)) {
-            throw new TaskNotFoundException("Task not found: " + taskId);
-        }
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found: " + taskId));
+        UUID sprintId = task.getSprintId();
+        TaskStatus status = task.getStatus();
+        Integer storyPoints = task.getStoryPoints();
+
         taskRepository.deleteById(taskId);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("taskId", taskId.toString());
+        payload.put("sprintId", sprintId == null ? null : sprintId.toString());
+        payload.put("status", status == null ? null : status.name());
+        payload.put("storyPoints", storyPoints);
+        eventPublisher.publish(TaskEventType.TASK_DELETED, taskId.toString(), payload);
+    }
+
+    @Transactional(readOnly = true)
+    public TaskSprintSummaryResponse sprintSummary(UUID sprintId) {
+        List<Object[]> rows = taskRepository.sprintSummaryRaw(sprintId, TaskStatus.DONE);
+        Object[] row = rows.isEmpty() ? new Object[] {0L, 0L, 0L, 0L} : rows.get(0);
+        return new TaskSprintSummaryResponse(
+                toInt(row[0]),
+                toInt(row[1]),
+                toInt(row[2]),
+                toInt(row[3])
+        );
+    }
+
+    @Transactional
+    public BulkMoveResponse bulkMoveToSprint(BulkMoveToSprintRequest request) {
+        List<Task> found = taskRepository.findAllById(request.taskIds());
+        Set<UUID> foundIds = new LinkedHashSet<>();
+        List<UUID> movedTaskIds = new ArrayList<>();
+        List<UUID> skippedTaskIds = new ArrayList<>();
+        Set<UUID> fromSprintIds = new LinkedHashSet<>();
+
+        for (Task task : found) {
+            foundIds.add(task.getId());
+            if (!Objects.equals(task.getProjectId(), request.projectId())) {
+                skippedTaskIds.add(task.getId());
+                continue;
+            }
+            fromSprintIds.add(task.getSprintId());
+            task.setSprintId(request.toSprintId());
+            taskRepository.save(task);
+            movedTaskIds.add(task.getId());
+        }
+        for (UUID requestedId : request.taskIds()) {
+            if (!foundIds.contains(requestedId)) {
+                skippedTaskIds.add(requestedId);
+            }
+        }
+
+        if (!movedTaskIds.isEmpty()) {
+            UUID actorId = ActorSupport.currentUserIdOrNull();
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("taskIds", movedTaskIds.stream().map(UUID::toString).toList());
+            payload.put("fromSprintIds", fromSprintIds.stream().map(id -> id == null ? null : id.toString()).toList());
+            payload.put("toSprintId", request.toSprintId().toString());
+            payload.put("actorUserId", actorId == null ? null : actorId.toString());
+            eventPublisher.publish(TaskEventType.TASKS_BULK_MOVED, request.toSprintId().toString(), payload);
+        }
+
+        return new BulkMoveResponse(movedTaskIds.size(), movedTaskIds, skippedTaskIds);
+    }
+
+    private int toInt(Object value) {
+        return value == null ? 0 : ((Number) value).intValue();
     }
 
     private void recordUpdateActivity(Task task, boolean statusChanged, boolean assignedChanged, boolean moved) {

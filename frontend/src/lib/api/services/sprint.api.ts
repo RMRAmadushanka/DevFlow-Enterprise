@@ -1,10 +1,17 @@
 import { apiClient } from "../client";
 import type {
+  BacklogItemDto,
+  BurndownPointDto,
   CreateSprintRequest,
+  MoveTasksToSprintRequest,
+  PlanningStateDto,
+  SprintActivityDto,
   SprintDto,
   SprintListQuery,
   SprintPage,
+  SprintStatusUpdateRequest,
   UpdateSprintRequest,
+  VelocityPointDto,
 } from "../types/sprint";
 
 function toQuery(
@@ -43,5 +50,59 @@ export const sprintApi = {
 
   deleteSprint(sprintId: string): Promise<void> {
     return apiClient<void>(`/api/sprints/${sprintId}`, { method: "DELETE" });
+  },
+
+  updateSprintStatus(sprintId: string, status: string): Promise<SprintDto> {
+    return apiClient<SprintDto>(`/api/sprints/${sprintId}/status`, {
+      method: "PATCH",
+      body: { status } satisfies SprintStatusUpdateRequest,
+    });
+  },
+
+  startSprint(sprintId: string): Promise<SprintDto> {
+    return apiClient<SprintDto>(`/api/sprints/${sprintId}/start`, { method: "POST" });
+  },
+
+  completeSprint(sprintId: string): Promise<SprintDto> {
+    return apiClient<SprintDto>(`/api/sprints/${sprintId}/complete`, { method: "POST" });
+  },
+
+  archiveSprint(sprintId: string): Promise<SprintDto> {
+    return apiClient<SprintDto>(`/api/sprints/${sprintId}/archive`, { method: "PATCH" });
+  },
+
+  getBurndown(sprintId: string): Promise<BurndownPointDto[]> {
+    return apiClient<BurndownPointDto[]>(`/api/sprints/${sprintId}/burndown`);
+  },
+
+  getVelocityHistory(projectId: string, limit?: number): Promise<VelocityPointDto[]> {
+    return apiClient<VelocityPointDto[]>("/api/sprints/velocity-history", {
+      query: { projectId, limit },
+    });
+  },
+
+  getPlanning(sprintId: string): Promise<PlanningStateDto> {
+    return apiClient<PlanningStateDto>(`/api/sprints/${sprintId}/planning`);
+  },
+
+  getBacklog(projectId: string): Promise<BacklogItemDto[]> {
+    return apiClient<BacklogItemDto[]>("/api/sprints/backlog", { query: { projectId } });
+  },
+
+  moveTasksToSprint(
+    sprintId: string,
+    taskIds: string[],
+    projectId: string
+  ): Promise<PlanningStateDto> {
+    return apiClient<PlanningStateDto>(`/api/sprints/${sprintId}/move-tasks`, {
+      method: "POST",
+      body: { taskIds, projectId } satisfies MoveTasksToSprintRequest,
+    });
+  },
+
+  getActivity(sprintId: string, limit?: number): Promise<SprintActivityDto[]> {
+    return apiClient<SprintActivityDto[]>(`/api/sprints/${sprintId}/activity`, {
+      query: { limit },
+    });
   },
 };

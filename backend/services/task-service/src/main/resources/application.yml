@@ -66,6 +66,11 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+devflow:
+  outbox:
+    poll-interval-ms: 2000
+    batch-size: 50
+
 logging:
   level:
     root: INFO

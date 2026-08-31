@@ -2,9 +2,19 @@ package com.devflow.sprint.controller;
 
 import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
+import com.devflow.sprint.dto.BacklogItemResponse;
+import com.devflow.sprint.dto.BurndownPointResponse;
 import com.devflow.sprint.dto.CreateSprintRequest;
+import com.devflow.sprint.dto.MoveTasksRequest;
+import com.devflow.sprint.dto.PlanningStateResponse;
 import com.devflow.sprint.dto.SprintResponse;
+import com.devflow.sprint.dto.SprintActivityResponse;
+import com.devflow.sprint.dto.SprintStatusUpdateRequest;
 import com.devflow.sprint.dto.UpdateSprintRequest;
+import com.devflow.sprint.dto.VelocityPointResponse;
+import com.devflow.sprint.service.SprintActivityService;
+import com.devflow.sprint.service.SprintBurndownService;
+import com.devflow.sprint.service.SprintPlanningService;
 import com.devflow.sprint.service.SprintService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,9 +45,20 @@ import java.util.UUID;
 public class SprintController {
 
     private final SprintService sprintService;
+    private final SprintBurndownService burndownService;
+    private final SprintPlanningService planningService;
+    private final SprintActivityService activityService;
 
-    public SprintController(SprintService sprintService) {
+    public SprintController(
+            SprintService sprintService,
+            SprintBurndownService burndownService,
+            SprintPlanningService planningService,
+            SprintActivityService activityService
+    ) {
         this.sprintService = sprintService;
+        this.burndownService = burndownService;
+        this.planningService = planningService;
+        this.activityService = activityService;
     }
 
     @PostMapping
@@ -77,10 +100,90 @@ public class SprintController {
         return ApiResponse.ok(sprintService.update(sprintId, request));
     }
 
+    @PatchMapping("/{sprintId}/status")
+    @Operation(summary = "Update sprint status", description = "Validates transitions. Requires sprint.update. 422 on invalid transition.")
+    public ApiResponse<SprintResponse> updateStatus(
+            @PathVariable UUID sprintId,
+            @Valid @RequestBody SprintStatusUpdateRequest request
+    ) {
+        return ApiResponse.ok(sprintService.updateStatus(sprintId, request));
+    }
+
+    @PostMapping("/{sprintId}/start")
+    @Operation(summary = "Start sprint", description = "PLANNING -> ACTIVE. Requires sprint.start.")
+    public ApiResponse<SprintResponse> start(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(sprintService.start(sprintId));
+    }
+
+    @PostMapping("/{sprintId}/complete")
+    @Operation(summary = "Complete sprint", description = "ACTIVE -> COMPLETED. Requires sprint.complete.")
+    public ApiResponse<SprintResponse> complete(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(sprintService.complete(sprintId));
+    }
+
+    @PatchMapping("/{sprintId}/archive")
+    @Operation(summary = "Archive sprint", description = "-> ARCHIVED. Requires sprint.update.")
+    public ApiResponse<SprintResponse> archive(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(sprintService.archive(sprintId));
+    }
+
     @DeleteMapping("/{sprintId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete sprint")
     public void delete(@PathVariable UUID sprintId) {
         sprintService.delete(sprintId);
+    }
+
+    @GetMapping("/{sprintId}/burndown")
+    @Operation(summary = "Get sprint burndown", description = "Persisted daily snapshots, or a synthesized series if none exist yet.")
+    public ApiResponse<List<BurndownPointResponse>> burndown(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(burndownService.getBurndown(sprintId));
+    }
+
+    @PostMapping("/{sprintId}/burndown/snapshot")
+    @Operation(summary = "Manually snapshot today's burndown (dev-only backfill)",
+            description = "TODO: gate behind a platform-admin role once one is available; currently only requires authentication.")
+    public ApiResponse<Void> snapshotBurndown(@PathVariable UUID sprintId) {
+        burndownService.snapshotOne(sprintId, LocalDate.now());
+        return ApiResponse.ok(null);
+    }
+
+    @GetMapping("/velocity-history")
+    @Operation(summary = "Velocity history for a project", description = "Last N sprints (default 6) sorted by end date.")
+    public ApiResponse<List<VelocityPointResponse>> velocityHistory(
+            @RequestParam UUID projectId,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return ApiResponse.ok(sprintService.velocityHistory(projectId, limit));
+    }
+
+    @GetMapping("/{sprintId}/planning")
+    @Operation(summary = "Sprint planning board", description = "Project backlog (unassigned tasks) plus this sprint's tasks and capacity.")
+    public ApiResponse<PlanningStateResponse> planning(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(planningService.planning(sprintId));
+    }
+
+    @GetMapping("/backlog")
+    @Operation(summary = "Project backlog", description = "Unassigned tasks for a project.")
+    public ApiResponse<List<BacklogItemResponse>> backlog(@RequestParam UUID projectId) {
+        return ApiResponse.ok(planningService.backlog(projectId));
+    }
+
+    @PostMapping("/{sprintId}/move-tasks")
+    @Operation(summary = "Move tasks into this sprint", description = "Requires sprint.manage_backlog.")
+    public ApiResponse<PlanningStateResponse> moveTasks(
+            @PathVariable UUID sprintId,
+            @Valid @RequestBody MoveTasksRequest request
+    ) {
+        return ApiResponse.ok(planningService.moveTasksToSprint(sprintId, request));
+    }
+
+    @GetMapping("/{sprintId}/activity")
+    @Operation(summary = "Sprint activity log", description = "Most recent audit-log entries for this sprint, newest first.")
+    public ApiResponse<List<SprintActivityResponse>> activity(
+            @PathVariable UUID sprintId,
+            @RequestParam(required = false) Integer limit
+    ) {
+        return ApiResponse.ok(activityService.list(sprintId, limit));
     }
 }

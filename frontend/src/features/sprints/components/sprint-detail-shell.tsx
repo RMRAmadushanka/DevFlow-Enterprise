@@ -13,7 +13,7 @@ import { PermissionGuard } from "@/lib/permissions";
 import { routes } from "@/config/routes";
 
 import { SPRINT_DETAIL_TABS } from "../constants/sprint.constants";
-import { useSprint } from "../hooks/use-sprints";
+import { useSprint, useSprintActivity, useVelocityHistory } from "../hooks/use-sprints";
 import type { SprintDetail } from "../types/sprint.types";
 import { CompleteSprintModal } from "./complete-sprint-modal";
 import { DeleteSprintModal } from "./delete-sprint-modal";
@@ -130,22 +130,13 @@ function SprintDetailShell({ sprintId }: SprintDetailShellProps) {
 
           {activeTab === "board" ? <SprintBoard projectId={sprint.projectId} /> : null}
 
-          {activeTab === "reports" ? <SprintReports sprint={sprint} /> : null}
+          {activeTab === "reports" ? <SprintReportsTab sprint={sprint} /> : null}
 
           {activeTab === "members" ? (
             <SprintMetrics metrics={sprint.metrics} />
           ) : null}
 
-          {activeTab === "activity" ? (
-            <ActivityTimeline
-              items={sprint.activity.map((entry) => ({
-                id: entry.id,
-                action: entry.summary,
-                description: entry.actorName,
-                timestamp: entry.timestamp,
-              }))}
-            />
-          ) : null}
+          {activeTab === "activity" ? <SprintActivityTab sprintId={sprintId} /> : null}
 
           {activeTab === "settings" ? (
             <p className="text-sm text-muted-foreground">
@@ -163,6 +154,28 @@ function SprintDetailShell({ sprintId }: SprintDetailShellProps) {
       <CompleteSprintModal sprint={sprint} open={completeOpen} onOpenChange={setCompleteOpen} />
       <DeleteSprintModal sprint={sprint} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
+  );
+}
+
+function SprintReportsTab({ sprint }: { sprint: SprintDetail }) {
+  const { data: velocityData, isLoading } = useVelocityHistory(sprint.projectId);
+  return <SprintReports sprint={sprint} velocityData={velocityData} loading={isLoading} />;
+}
+
+function SprintActivityTab({ sprintId }: { sprintId: string }) {
+  const { data: activity, isLoading } = useSprintActivity(sprintId);
+  if (isLoading) {
+    return <SprintSkeleton />;
+  }
+  return (
+    <ActivityTimeline
+      items={(activity ?? []).map((entry) => ({
+        id: entry.id,
+        action: entry.summary,
+        description: entry.actorName,
+        timestamp: entry.timestamp,
+      }))}
+    />
   );
 }
 

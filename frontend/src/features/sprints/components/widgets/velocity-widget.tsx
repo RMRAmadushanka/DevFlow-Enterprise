@@ -8,8 +8,12 @@ import { WidgetCard } from "@/components/dashboard";
 import { useVelocityHistory } from "../../hooks/use-sprints";
 import { SprintVelocityChart } from "../sprint-velocity-chart";
 
-const VelocityWidget = React.memo(function VelocityWidget() {
-  const { data, isLoading, isError, refetch } = useVelocityHistory();
+export interface VelocityWidgetProps {
+  projectId: string | undefined;
+}
+
+const VelocityWidget = React.memo(function VelocityWidget({ projectId }: VelocityWidgetProps) {
+  const { data, isLoading, isError, refetch } = useVelocityHistory(projectId);
 
   return (
     <WidgetCard

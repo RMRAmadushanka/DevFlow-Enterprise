@@ -10,6 +10,7 @@ public final class KafkaTopics {
     public static final String INVITATION_EVENTS = "invitation-events";
     public static final String PROJECT_EVENTS = "project-events";
     public static final String TASK_EVENTS = "task-events";
+    public static final String SPRINT_EVENTS = "sprint-events";
     public static final String NOTIFICATION_EVENTS = "notification-events";
     public static final String AUDIT_EVENTS = "audit-events";
 

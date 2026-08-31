@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -73,6 +74,10 @@ public class Sprint extends BaseEntity {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     public UUID getProjectId() { return projectId; }
     public void setProjectId(UUID projectId) { this.projectId = projectId; }
     public UUID getOrganizationId() { return organizationId; }
@@ -111,4 +116,6 @@ public class Sprint extends BaseEntity {
     public void setArchived(boolean archived) { this.archived = archived; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public long getVersion() { return version; }
+    public void setVersion(long version) { this.version = version; }
 }

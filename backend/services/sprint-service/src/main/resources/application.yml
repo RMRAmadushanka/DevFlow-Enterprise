@@ -66,6 +66,17 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+devflow:
+  security:
+    jwt:
+      client-id: ${KEYCLOAK_WEB_CLIENT_ID:devflow-web}
+  clients:
+    organization-service-url: ${ORGANIZATION_SERVICE_URL:http://localhost:8083}
+    task-service-url: ${TASK_SERVICE_URL:http://localhost:8085}
+  outbox:
+    poll-interval-ms: 2000
+    batch-size: 50
+
 logging:
   level:
     root: INFO

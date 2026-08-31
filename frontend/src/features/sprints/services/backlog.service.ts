@@ -1,4 +1,9 @@
+import { ApiError, isApiError, sprintApi } from "@/lib/api";
+
 import type { BacklogItem } from "../types/sprint.types";
+import { SprintValidationError } from "../utils/errors";
+import { dtoToBacklogItem } from "./sprint-api.mappers";
+import { isSprintApiEnabled } from "./sprint-api.service";
 import { sprintService } from "./sprint.service";
 
 const delay = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -63,7 +68,61 @@ let backlogSeed: BacklogItem[] = [
   },
 ];
 
-export const backlogService = {
+function mapError(error: unknown): never {
+  if (isApiError(error)) {
+    if (error.status === 400 || error.status === 409 || error.status === 422) {
+      throw new SprintValidationError(error.message || "Validation failed");
+    }
+    throw new SprintValidationError(error.message || "Request failed");
+  }
+  if (error instanceof ApiError) {
+    throw new SprintValidationError(error.message);
+  }
+  throw error;
+}
+
+async function call<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    mapError(error);
+  }
+}
+
+/** Live HTTP adapter — backed by sprint-service's `/api/sprints/backlog` endpoints. */
+const backlogApiService = {
+  async list(projectId: string, q = ""): Promise<BacklogItem[]> {
+    const dtos = await call(() => sprintApi.getBacklog(projectId));
+    const items = dtos.map(dtoToBacklogItem);
+    const query = q.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((item) =>
+      [item.key, item.title, item.epicName ?? ""].join(" ").toLowerCase().includes(query)
+    );
+  },
+
+  async moveToSprint(
+    projectId: string,
+    sprintId: string,
+    taskIds: string[]
+  ): Promise<BacklogItem[]> {
+    await call(() => sprintApi.moveTasksToSprint(sprintId, taskIds, projectId));
+    return this.list(projectId);
+  },
+
+  async reorder(projectId: string, _orderedIds: string[]): Promise<BacklogItem[]> {
+    // Ordering isn't persisted server-side (no rank/order column on Task yet) — this
+    // is a known/accepted limitation for this pass. Client-only no-op: return the
+    // current list unchanged.
+    return this.list(projectId);
+  },
+};
+
+export function isBacklogApiEnabled(): boolean {
+  return isSprintApiEnabled();
+}
+
+const mockBacklogService = {
   async list(projectId: string, q = ""): Promise<BacklogItem[]> {
     await delay();
     const query = q.trim().toLowerCase();
@@ -107,3 +166,16 @@ export const backlogService = {
     return this.list(projectId);
   },
 };
+
+export const backlogService = new Proxy(mockBacklogService, {
+  get(target, prop, receiver) {
+    if (isBacklogApiEnabled()) {
+      const live = Reflect.get(backlogApiService, prop, backlogApiService);
+      if (typeof live === "function") {
+        return (live as (...args: unknown[]) => unknown).bind(backlogApiService);
+      }
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});

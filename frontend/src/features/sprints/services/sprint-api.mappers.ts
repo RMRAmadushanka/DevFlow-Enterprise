@@ -1,15 +1,28 @@
 import type {
+  BacklogItem,
+  PlanningState,
   Sprint,
   SprintDetail,
   SprintFilters,
   SprintHealth,
   SprintSortField,
   SprintStatus,
+  BurndownPoint,
+  VelocityPoint,
 } from "../types/sprint.types";
-import type { SprintDto, SprintListQuery } from "@/lib/api/types/sprint";
+import type {
+  BacklogItemDto,
+  BurndownPointDto,
+  PlanningStateDto,
+  SprintActivityDto,
+  SprintDto,
+  SprintListQuery,
+  VelocityPointDto,
+} from "@/lib/api/types/sprint";
 
 const STATUS_SET = new Set<string>(["planning", "active", "completed", "archived"]);
 const HEALTH_SET = new Set<string>(["healthy", "at_risk", "critical", "unknown"]);
+const PRIORITY_SET = new Set<string>(["critical", "high", "medium", "low", "none"]);
 
 export function isUuid(value: string | null | undefined): boolean {
   if (!value) return false;
@@ -26,6 +39,11 @@ export function toUiStatus(raw: string | null | undefined): SprintStatus {
 export function toUiHealth(raw: string | null | undefined): SprintHealth {
   const value = (raw ?? "unknown").toLowerCase();
   return HEALTH_SET.has(value) ? (value as SprintHealth) : "unknown";
+}
+
+export function toUiPriority(raw: string | null | undefined): BacklogItem["priority"] {
+  const value = (raw ?? "medium").toLowerCase();
+  return PRIORITY_SET.has(value) ? (value as BacklogItem["priority"]) : "medium";
 }
 
 export function dtoToSprint(dto: SprintDto): Sprint {
@@ -59,7 +77,68 @@ function remainingDays(endDate: string): number {
   return Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
 }
 
-export function dtoToSprintDetail(dto: SprintDto): SprintDetail {
+export function dtoToBurndownPoint(dto: BurndownPointDto): BurndownPoint {
+  return {
+    label: dto.date,
+    remaining: dto.remainingPoints ?? 0,
+    ideal: dto.idealPoints ?? 0,
+  };
+}
+
+// No dedicated burnup endpoint — each burndown snapshot already carries completedPoints,
+// so scope (completed + remaining at that point) and completed are derivable directly.
+export function burndownToBurnupPoints(
+  burndown: BurndownPointDto[]
+): SprintDetail["burnup"] {
+  return burndown.map((dto) => ({
+    label: dto.date,
+    completed: dto.completedPoints ?? 0,
+    scope: (dto.completedPoints ?? 0) + (dto.remainingPoints ?? 0),
+  }));
+}
+
+export function dtoToVelocityPoint(dto: VelocityPointDto): VelocityPoint {
+  return {
+    label: dto.sprintName,
+    committed: dto.committedPoints ?? 0,
+    completed: dto.completedPoints ?? 0,
+  };
+}
+
+export function dtoToBacklogItem(dto: BacklogItemDto): BacklogItem {
+  return {
+    id: dto.id,
+    key: dto.key,
+    title: dto.title,
+    priority: toUiPriority(dto.priority),
+    status: dto.status,
+    storyPoints: dto.storyPoints ?? undefined,
+    epicName: dto.epicName ?? undefined,
+    sprintId: dto.sprintId,
+    assigneeName: dto.assigneeName ?? undefined,
+    projectId: dto.projectId,
+  };
+}
+
+export function dtoToSprintActivity(dto: SprintActivityDto): SprintDetail["activity"][number] {
+  return {
+    id: dto.id,
+    actorName: dto.actorName ?? "Unknown",
+    summary: dto.summary,
+    timestamp: dto.createdAt,
+  };
+}
+
+export function dtoToPlanningState(dto: PlanningStateDto): PlanningState {
+  return {
+    backlog: dto.backlog.map(dtoToBacklogItem),
+    sprintTasks: dto.sprintTasks.map(dtoToBacklogItem),
+    capacityPoints: dto.capacityPoints ?? 0,
+    allocatedPoints: dto.allocatedPoints ?? 0,
+  };
+}
+
+export function dtoToSprintDetail(dto: SprintDto, burndown: BurndownPointDto[] = []): SprintDetail {
   const sprint = dtoToSprint(dto);
   const progress =
     sprint.committedPoints > 0
@@ -80,8 +159,9 @@ export function dtoToSprintDetail(dto: SprintDto): SprintDetail {
       health: sprint.health,
       remainingDays: remainingDays(sprint.endDate),
     },
-    burndown: [],
-    burnup: [],
+    burndown: burndown.map(dtoToBurndownPoint),
+    burnup: burndownToBurnupPoints(burndown),
+    // No backend data source for per-member capacity yet — out of scope for this pass.
     capacity: [],
     taskIds: [],
     activity: [

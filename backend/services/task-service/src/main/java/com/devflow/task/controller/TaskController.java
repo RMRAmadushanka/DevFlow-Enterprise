@@ -2,9 +2,12 @@ package com.devflow.task.controller;
 
 import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
+import com.devflow.task.dto.BulkMoveResponse;
+import com.devflow.task.dto.BulkMoveToSprintRequest;
 import com.devflow.task.dto.CreateTaskRequest;
 import com.devflow.task.dto.TaskDetailResponse;
 import com.devflow.task.dto.TaskResponse;
+import com.devflow.task.dto.TaskSprintSummaryResponse;
 import com.devflow.task.dto.UpdateTaskRequest;
 import com.devflow.task.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,6 +59,7 @@ public class TaskController {
             @RequestParam(required = false) UUID assigneeId,
             @RequestParam(required = false) UUID reporterId,
             @RequestParam(required = false) UUID sprintId,
+            @RequestParam(required = false) Boolean unassigned,
             @RequestParam(required = false) Boolean archived,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer page,
@@ -70,12 +74,25 @@ public class TaskController {
                 assigneeId,
                 reporterId,
                 sprintId,
+                unassigned,
                 archived,
                 search,
                 page,
                 size,
                 sort
         ));
+    }
+
+    @GetMapping("/sprint-summary")
+    @Operation(summary = "Get sprint task/points summary")
+    public ApiResponse<TaskSprintSummaryResponse> sprintSummary(@RequestParam UUID sprintId) {
+        return ApiResponse.ok(taskService.sprintSummary(sprintId));
+    }
+
+    @PostMapping("/bulk-move-sprint")
+    @Operation(summary = "Bulk move tasks into a sprint")
+    public ApiResponse<BulkMoveResponse> bulkMoveToSprint(@Valid @RequestBody BulkMoveToSprintRequest request) {
+        return ApiResponse.ok(taskService.bulkMoveToSprint(request));
     }
 
     @GetMapping("/{taskId}")
