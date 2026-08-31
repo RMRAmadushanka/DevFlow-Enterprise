@@ -27,7 +27,7 @@ export const defaultNavGroups: NavGroup[] = [
     items: [
       { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { id: "projects", label: "Projects", href: "/projects", icon: FolderKanban },
-      { id: "tasks", label: "Tasks", href: "/tasks", icon: SquareCheck, badge: 12 },
+      { id: "tasks", label: "Tasks", href: "/tasks", icon: SquareCheck },
       { id: "sprints", label: "Sprints", href: "/sprints", icon: Gauge },
       { id: "documents", label: "Documents", href: "/documents", icon: FileText },
     ],

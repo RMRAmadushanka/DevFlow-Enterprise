@@ -13,6 +13,9 @@ import { SelectField } from "@/components/forms/select";
 import { TagsInputField } from "@/components/forms/tags-input";
 import { SubmitButton } from "@/components/forms/form-actions";
 import { AlertBanner } from "@/components/feedback/alert";
+import { useAuthUser } from "@/features/auth";
+import { useProjects } from "@/features/projects";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 import {
   LABEL_CATALOG,
@@ -29,6 +32,7 @@ import {
   type CreateTaskFormValues,
   type UpdateTaskFormValues,
 } from "../schemas/task.schema";
+import { isTaskApiEnabled } from "../services/task-api.service";
 import type { Task, TaskPriority, TaskStatus } from "../types/task.types";
 import { toTaskErrorMessage } from "../utils/errors";
 
@@ -46,22 +50,59 @@ export interface TaskFormProps {
   mode: "create" | "edit";
   task?: Task;
   compact?: boolean;
+  /** HTML form id — use with a modal footer `type="submit" form={formId}`. */
+  formId?: string;
+  /** Hide the inline submit button when the parent modal owns the action. */
+  hideSubmit?: boolean;
 }
 
-function CreateTaskFormInner({ compact }: { compact?: boolean }) {
+function CreateTaskFormInner({
+  compact,
+  formId,
+  hideSubmit,
+}: {
+  compact?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
+}) {
   const create = useCreateTask();
+  const liveTasks = isTaskApiEnabled();
+  const liveMode = isLiveBackendMode();
+  const authUser = useAuthUser();
+  const { data: projectsData } = useProjects({ enabled: liveTasks || liveMode });
+
+  const projectOptions = React.useMemo(() => {
+    if (liveTasks || liveMode) {
+      const items = projectsData?.items ?? [];
+      return items.map((project) => ({
+        value: project.id,
+        label: `${project.key} — ${project.name}`,
+      }));
+    }
+    return [...PROJECT_OPTIONS];
+  }, [liveMode, liveTasks, projectsData?.items]);
+
+  const sprintOptions = liveTasks
+    ? [{ value: "", label: "No sprint" }]
+    : [{ value: "", label: "No sprint" }, ...SPRINT_OPTIONS];
+
+  const userOptions = liveTasks
+    ? authUser
+      ? [{ value: authUser.id, label: authUser.name }]
+      : []
+    : [...USER_OPTIONS];
 
   const form = useAppForm({
     schema: createTaskSchema,
     defaultValues: {
       title: "",
       description: "",
-      projectId: PROJECT_OPTIONS[0]?.value ?? "",
+      projectId: "",
       sprintId: "",
       status: "todo",
       priority: "medium",
       assigneeId: "",
-      reporterId: "",
+      reporterId: liveTasks ? authUser?.id ?? "" : "",
       labels: [],
       storyPoints: undefined,
       estimateMinutes: undefined,
@@ -80,7 +121,7 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
         status: values.status,
         priority: values.priority,
         assigneeId: values.assigneeId || undefined,
-        reporterId: values.reporterId || undefined,
+        reporterId: values.reporterId || authUser?.id || undefined,
         labels: values.labels,
         storyPoints: Number.isFinite(values.storyPoints) ? values.storyPoints : undefined,
         estimateMinutes: Number.isFinite(values.estimateMinutes)
@@ -95,6 +136,12 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
     },
   });
 
+  React.useEffect(() => {
+    if (!form.getValues("projectId") && projectOptions[0]?.value) {
+      form.setValue("projectId", projectOptions[0].value);
+    }
+  }, [form, projectOptions]);
+
   return (
     <div className="flex flex-col gap-4">
       {form.submitError || create.error ? (
@@ -104,8 +151,15 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
           description={toTaskErrorMessage(form.submitError || create.error)}
         />
       ) : null}
+      {(liveTasks || liveMode) && projectOptions.length === 0 ? (
+        <AlertBanner
+          tone="warning"
+          title="No projects available"
+          description="Create a project first, then add tasks to it."
+        />
+      ) : null}
 
-      <AppForm form={form} className="gap-4">
+      <AppForm form={form} id={formId} className="gap-4">
         <FormController
           name="title"
           control={form.control}
@@ -129,7 +183,7 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
             render={({ field, fieldState }) => (
               <SelectField
                 label="Project"
-                options={[...PROJECT_OPTIONS]}
+                options={projectOptions}
                 value={field.value}
                 onValueChange={field.onChange}
                 error={fieldState.error?.message}
@@ -142,7 +196,7 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
             render={({ field, fieldState }) => (
               <SelectField
                 label="Sprint"
-                options={[{ value: "", label: "No sprint" }, ...SPRINT_OPTIONS]}
+                options={sprintOptions}
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
                 error={fieldState.error?.message}
@@ -185,7 +239,7 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
             render={({ field, fieldState }) => (
               <SelectField
                 label="Assignee"
-                options={[{ value: "", label: "Unassigned" }, ...USER_OPTIONS]}
+                options={[{ value: "", label: "Unassigned" }, ...userOptions]}
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
                 error={fieldState.error?.message}
@@ -198,7 +252,10 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
             render={({ field, fieldState }) => (
               <SelectField
                 label="Reporter"
-                options={[{ value: "", label: "Default reporter" }, ...USER_OPTIONS]}
+                options={[
+                  { value: "", label: liveTasks ? "Current user" : "Default reporter" },
+                  ...userOptions,
+                ]}
                 value={field.value ?? ""}
                 onValueChange={field.onChange}
                 error={fieldState.error?.message}
@@ -288,9 +345,11 @@ function CreateTaskFormInner({ compact }: { compact?: boolean }) {
             />
           </>
         ) : null}
-        <SubmitButton loading={form.isSubmitting || create.isPending} loadingText="Creating…">
-          Create task
-        </SubmitButton>
+        {hideSubmit ? null : (
+          <SubmitButton loading={form.isSubmitting || create.isPending} loadingText="Creating…">
+            Create task
+          </SubmitButton>
+        )}
       </AppForm>
     </div>
   );
@@ -415,12 +474,12 @@ function EditTaskFormInner({ task }: { task: Task }) {
   );
 }
 
-function TaskForm({ mode, task, compact }: TaskFormProps) {
+function TaskForm({ mode, task, compact, formId, hideSubmit }: TaskFormProps) {
   if (mode === "edit") {
     if (!task) return null;
     return <EditTaskFormInner task={task} />;
   }
-  return <CreateTaskFormInner compact={compact} />;
+  return <CreateTaskFormInner compact={compact} formId={formId} hideSubmit={hideSubmit} />;
 }
 
 export { TaskForm };

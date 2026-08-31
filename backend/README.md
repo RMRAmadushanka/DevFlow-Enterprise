@@ -50,6 +50,8 @@ backend/
 ```bash
 cd backend
 cp .env.example .env
+# Optional: keep compose host ports in sync (POSTGRES_PORT defaults to 5432)
+cp infrastructure/docker/.env.example infrastructure/docker/.env
 
 docker compose -f infrastructure/docker/docker-compose.yml up -d
 ```
@@ -58,11 +60,11 @@ This starts:
 
 | Service | Host port |
 |---|---|
-| PostgreSQL | 5432 |
+| PostgreSQL | 5432 (do not use 15432 on Windows — Hyper-V often blocks it) |
 | MongoDB | 27017 |
 | Redis | 6379 |
 | Kafka | 9092 |
-| Keycloak | 8180 |
+| Keycloak | 8180 (or `KEYCLOAK_PORT` from `.env`) |
 
 Keycloak admin: `http://localhost:8180` — user `admin` / `admin`  
 Realm import: `devflow` (see `infrastructure/keycloak/README.md`)

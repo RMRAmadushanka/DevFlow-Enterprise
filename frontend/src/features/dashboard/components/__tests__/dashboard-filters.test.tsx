@@ -38,6 +38,10 @@ describe("DashboardFilters", () => {
       "aria-pressed",
       "true"
     );
+    // Closed triggers show human labels, not raw ids
+    expect(screen.getByRole("combobox", { name: /organization/i })).toHaveTextContent(
+      "Acme Corporation"
+    );
   });
 
   it("updates date range on preset click", async () => {

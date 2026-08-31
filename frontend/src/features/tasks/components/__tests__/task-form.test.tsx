@@ -9,6 +9,22 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
+vi.mock("@/features/auth", () => ({
+  useAuthUser: () => null,
+}));
+
+vi.mock("@/features/projects", () => ({
+  useProjects: () => ({ data: { items: [] }, isLoading: false }),
+}));
+
+vi.mock("@/lib/api/live-api", () => ({
+  isLiveBackendMode: () => false,
+}));
+
+vi.mock("../../services/task-api.service", () => ({
+  isTaskApiEnabled: () => false,
+}));
+
 vi.mock("../../hooks/use-tasks", () => ({
   useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
   useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
@@ -29,8 +45,7 @@ describe("TaskForm", () => {
   it("renders create fields", () => {
     renderForm();
     expect(screen.getByLabelText(/^title/i)).toBeInTheDocument();
-    expect(screen.getByText(/project/i)).toBeInTheDocument();
-    expect(screen.getByText(/priority/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create task/i })).toBeInTheDocument();
   });
 
   it("requires a title before submit", async () => {

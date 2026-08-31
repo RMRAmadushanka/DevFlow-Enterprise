@@ -191,7 +191,7 @@ function TaskDetailsDrawer({
               value: "time",
               label: "Time",
               icon: <Clock className="size-3.5" aria-hidden />,
-              content: <TimeTrackingCard timeTracking={task.timeTracking} />,
+              content: <TimeTrackingCard taskId={task.id} timeTracking={task.timeTracking} />,
             },
             {
               value: "linked",
@@ -200,6 +200,7 @@ function TaskDetailsDrawer({
               badge: task.relations.length || undefined,
               content: (
                 <TaskRelationCard
+                  taskId={task.id}
                   relations={task.relations}
                   onSelect={(relation) =>
                     onSelectTask?.({

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "jest-axe";
+import { SquareCheck } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 
 import { sampleOrganizations, sampleProjects, sampleUser } from "@/components/layout/sample-data";
@@ -48,8 +49,29 @@ describe("Sidebar", () => {
   });
 
   it("shows a badge count on items that define one", () => {
+    renderSidebar({
+      navGroups: [
+        {
+          id: "workspace",
+          label: "Workspace",
+          items: [
+            {
+              id: "tasks",
+              label: "Tasks",
+              href: "/tasks",
+              icon: SquareCheck,
+              badge: 3,
+            },
+          ],
+        },
+      ],
+    });
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("does not show a fake badge on default Tasks nav", () => {
     renderSidebar();
-    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.queryByText("12")).not.toBeInTheDocument();
   });
 
   it("keeps an accessible name for nav items when collapsed to icon-only", () => {

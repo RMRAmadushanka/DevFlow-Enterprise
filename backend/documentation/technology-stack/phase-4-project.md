@@ -142,7 +142,7 @@ JDBC URL per profile; Docker init creates logical DB; no FK to user/org DBs.
 Write path commits domain rows + outbox; reads for authz load memberships; org perms via Feign not SQL joins.
 
 ### Configuration
-`DB_URL=jdbc:postgresql://localhost:15432/devflow_project` (defaults in `application.yml`).
+`DB_URL=jdbc:postgresql://localhost:5432/devflow_project` (defaults in `application.yml`).
 
 ### Testing
 Testcontainers PostgreSQL for Flyway/repository verification.

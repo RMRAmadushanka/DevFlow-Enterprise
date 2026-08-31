@@ -1,0 +1,95 @@
+package com.devflow.task.dto;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public record TaskDetailResponse(
+        UUID id,
+        String key,
+        String title,
+        String description,
+        String status,
+        String priority,
+        UUID projectId,
+        String projectName,
+        UUID sprintId,
+        String sprintName,
+        TaskUserDto assignee,
+        TaskUserDto reporter,
+        List<TaskLabelDto> labels,
+        Integer storyPoints,
+        Integer estimateMinutes,
+        int loggedMinutes,
+        LocalDate dueDate,
+        LocalDate startDate,
+        UUID parentId,
+        int attachmentCount,
+        int commentCount,
+        int checklistCompleted,
+        int checklistTotal,
+        boolean favorite,
+        boolean watching,
+        boolean archived,
+        Instant createdAt,
+        Instant updatedAt,
+        List<ChecklistItemResponse> checklist,
+        List<RelationResponse> relations,
+        List<TaskResponse> subtasks,
+        List<ActivityResponse> activity,
+        List<ActivityResponse> history,
+        TimeTrackingResponse timeTracking,
+        List<TaskUserDto> watchers,
+        List<Object> attachments
+) {
+    public static TaskDetailResponse from(
+            TaskResponse task,
+            List<ChecklistItemResponse> checklist,
+            List<RelationResponse> relations,
+            List<TaskResponse> subtasks,
+            List<ActivityResponse> activity,
+            List<ActivityResponse> history,
+            TimeTrackingResponse timeTracking,
+            List<TaskUserDto> watchers
+    ) {
+        return new TaskDetailResponse(
+                task.id(),
+                task.key(),
+                task.title(),
+                task.description(),
+                task.status(),
+                task.priority(),
+                task.projectId(),
+                task.projectName(),
+                task.sprintId(),
+                task.sprintName(),
+                task.assignee(),
+                task.reporter(),
+                task.labels(),
+                task.storyPoints(),
+                task.estimateMinutes(),
+                task.loggedMinutes(),
+                task.dueDate(),
+                task.startDate(),
+                task.parentId(),
+                task.attachmentCount(),
+                task.commentCount(),
+                task.checklistCompleted(),
+                task.checklistTotal(),
+                task.favorite(),
+                task.watching(),
+                task.archived(),
+                task.createdAt(),
+                task.updatedAt(),
+                checklist,
+                relations,
+                subtasks,
+                activity,
+                history,
+                timeTracking,
+                watchers,
+                List.of()
+        );
+    }
+}

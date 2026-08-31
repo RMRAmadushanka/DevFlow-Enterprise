@@ -110,8 +110,8 @@ export default function TaskDetailPage() {
           <TaskActivityTimeline items={task.activity} />
         </div>
         <div className="space-y-6">
-          <TimeTrackingCard timeTracking={task.timeTracking} />
-          <TaskRelationCard relations={task.relations} />
+          <TimeTrackingCard taskId={task.id} timeTracking={task.timeTracking} />
+          <TaskRelationCard taskId={task.id} relations={task.relations} />
           <TaskWatcherList taskId={task.id} watchers={task.watchers} watching={task.watching} />
           <TaskHistory items={task.history} />
         </div>

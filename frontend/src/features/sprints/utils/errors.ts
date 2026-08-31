@@ -13,6 +13,7 @@ export class SprintValidationError extends Error {
 }
 
 export function toSprintErrorMessage(error: unknown): string {
+  if (typeof error === "string" && error.trim()) return error;
   if (error instanceof Error && error.message) return error.message;
   return "Something went wrong. Please try again.";
 }

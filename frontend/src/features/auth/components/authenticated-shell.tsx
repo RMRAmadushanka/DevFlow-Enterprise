@@ -68,7 +68,17 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     user?.id
   );
 
-  const effectivePermissions = hasOrgPermissions ? orgPermissions : permissions;
+  const effectivePermissions = React.useMemo(() => {
+    if (!hasOrgPermissions || !orgPermissions) return permissions;
+    // Org RBAC may omit newer domains (task.*, sprint.*). Keep matching session
+    // permissions so Create/Update guards stay visible until the matrix catches up.
+    const orgSet = new Set(orgPermissions);
+    const sessionFallback = permissions.filter(
+      (code) =>
+        (code.startsWith("task.") || code.startsWith("sprint.")) && !orgSet.has(code)
+    );
+    return Array.from(new Set([...orgPermissions, ...sessionFallback]));
+  }, [hasOrgPermissions, orgPermissions, permissions]);
 
   const navGroups = React.useMemo(() => {
     const [workspace, ...rest] = defaultNavGroups;
@@ -125,7 +135,7 @@ function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   ]);
 
   if (initStatus === "initializing" || isLoading || status === "unknown" || endingSession) {
-    return <AuthLoading />;
+    return <AuthLoading label={endingSession ? "Signing out" : "Loading"} />;
   }
 
   if (!user) {

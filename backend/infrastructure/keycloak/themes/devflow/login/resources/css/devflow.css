@@ -455,6 +455,39 @@ input[type="submit"]:disabled,
   color: var(--devflow-text-secondary);
 }
 
+/* Inline submit loading (button spinner) — no full-page overlay */
+.df-btn-spinner {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.4rem;
+  border-radius: 9999px;
+  border: 2px solid color-mix(in srgb, var(--devflow-primary-fg) 35%, transparent);
+  border-top-color: var(--devflow-primary-fg);
+  animation: df-spin 0.7s linear infinite;
+  vertical-align: -0.1em;
+}
+
+@keyframes df-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button[type="submit"][data-df-loading="true"],
+input[type="submit"][data-df-loading="true"],
+.df-btn[data-df-loading="true"] {
+  opacity: 0.85;
+  pointer-events: none;
+  gap: 0;
+}
+
+body.df-is-submitting .df-input,
+body.df-is-submitting .df-password-toggle,
+body.df-is-submitting .df-link {
+  pointer-events: none;
+}
+
 #kc-locale {
   margin-bottom: 1rem;
 }

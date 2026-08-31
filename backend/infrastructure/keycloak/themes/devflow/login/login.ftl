@@ -5,7 +5,7 @@
     <#elseif section = "form">
         <p class="df-subtitle" style="margin-top:-1rem;margin-bottom:1.5rem">Sign in to DevFlow Enterprise</p>
         <#if realm.password>
-            <form id="kc-form-login" class="df-form" onsubmit="login.disabled = true; this.setAttribute('aria-busy','true'); return true;" action="${url.loginAction}" method="post">
+            <form id="kc-form-login" class="df-form" action="${url.loginAction}" method="post">
                 <#if !usernameHidden??>
                     <div class="df-field">
                         <label class="df-label" for="username">

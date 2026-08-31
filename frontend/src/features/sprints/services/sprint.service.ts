@@ -11,8 +11,8 @@ import type {
 } from "../types/sprint.types";
 import { remainingDays } from "../utils/dates";
 import { SprintNotFoundError, SprintValidationError } from "../utils/errors";
-import { createStubAwareService } from "@/lib/api/stub-service";
 import { isLiveBackendMode } from "@/lib/api/live-api";
+import { isSprintApiEnabled, sprintApiService } from "./sprint-api.service";
 
 const delay = (ms = 280) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -545,9 +545,15 @@ const mockSprintService = {
   },
 };
 
-export const sprintService = createStubAwareService("Sprints", mockSprintService, [
-  "list",
-  "getById",
-  "planning",
-  "velocityHistory",
-]);
+export const sprintService = new Proxy(mockSprintService, {
+  get(target, prop, receiver) {
+    if (isSprintApiEnabled()) {
+      const live = Reflect.get(sprintApiService, prop, sprintApiService);
+      if (typeof live === "function") {
+        return (live as (...args: unknown[]) => unknown).bind(sprintApiService);
+      }
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});

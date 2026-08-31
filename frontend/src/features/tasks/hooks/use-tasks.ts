@@ -196,6 +196,44 @@ export function useUpdateChecklist(taskId: string) {
   });
 }
 
+export function useLogTime(taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { minutes: number; note?: string }) =>
+      taskService.logTime(taskId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      toast.success("Time logged");
+    },
+    onError: (error) => toast.error(toTaskErrorMessage(error)),
+  });
+}
+
+export function useCreateTaskRelation(taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { type: import("../types/task.types").TaskRelationType; targetTaskId: string }) =>
+      taskService.createRelation(taskId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      toast.success("Task linked");
+    },
+    onError: (error) => toast.error(toTaskErrorMessage(error)),
+  });
+}
+
+export function useDeleteTaskRelation(taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (relationId: string) => taskService.deleteRelation(taskId, relationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      toast.success("Link removed");
+    },
+    onError: (error) => toast.error(toTaskErrorMessage(error)),
+  });
+}
+
 export function useTaskComments(taskId: string | undefined) {
   return useQuery({
     queryKey: taskKeys.comments(taskId ?? "unknown"),

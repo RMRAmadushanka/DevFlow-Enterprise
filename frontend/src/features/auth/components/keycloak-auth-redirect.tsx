@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 import { AlertBanner } from "@/components/feedback/alert";
 import { routes } from "@/config/routes";
@@ -88,9 +89,10 @@ function KeycloakAuthRedirect({ flow }: { flow: KeycloakAuthFlow }) {
       {error ? (
         <AlertBanner tone="error" title="Sign-in unavailable" description={error} />
       ) : (
-        <p className="text-sm text-muted-foreground" role="status">
-          Redirecting to secure sign-in…
-        </p>
+        <div className="flex justify-center py-2" role="status" aria-live="polite" aria-busy="true">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+          <span className="sr-only">Redirecting</span>
+        </div>
       )}
     </AuthLayout>
   );

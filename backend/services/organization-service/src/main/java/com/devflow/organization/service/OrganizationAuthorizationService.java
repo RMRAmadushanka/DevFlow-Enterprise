@@ -28,6 +28,14 @@ public class OrganizationAuthorizationService {
     public static final String PERM_PROJECT_READ = "project.read";
     public static final String PERM_PROJECT_UPDATE = "project.update";
     public static final String PERM_PROJECT_DELETE = "project.delete";
+    public static final String PERM_TASK_CREATE = "task.create";
+    public static final String PERM_TASK_READ = "task.read";
+    public static final String PERM_TASK_UPDATE = "task.update";
+    public static final String PERM_TASK_DELETE = "task.delete";
+    public static final String PERM_SPRINT_CREATE = "sprint.create";
+    public static final String PERM_SPRINT_READ = "sprint.read";
+    public static final String PERM_SPRINT_UPDATE = "sprint.update";
+    public static final String PERM_SPRINT_DELETE = "sprint.delete";
     public static final String PERM_ROLE_MANAGE = "role.manage";
 
     private final OrganizationMembershipRepository membershipRepository;
@@ -48,6 +56,8 @@ public class OrganizationAuthorizationService {
                     PERM_ORG_READ, PERM_ORG_UPDATE, PERM_ORG_DELETE, PERM_ORG_MANAGE_MEMBERS,
                     PERM_TEAM_CREATE, PERM_TEAM_READ, PERM_TEAM_UPDATE, PERM_TEAM_DELETE, PERM_TEAM_MANAGE_MEMBERS,
                     PERM_PROJECT_CREATE, PERM_PROJECT_READ, PERM_PROJECT_UPDATE, PERM_PROJECT_DELETE,
+                    PERM_TASK_CREATE, PERM_TASK_READ, PERM_TASK_UPDATE, PERM_TASK_DELETE,
+                    PERM_SPRINT_CREATE, PERM_SPRINT_READ, PERM_SPRINT_UPDATE, PERM_SPRINT_DELETE,
                     PERM_ROLE_MANAGE
             );
         }

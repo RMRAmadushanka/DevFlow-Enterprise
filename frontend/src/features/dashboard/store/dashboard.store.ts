@@ -34,7 +34,7 @@ interface DashboardUiState {
 }
 
 const defaultFilters: DashboardFilters = {
-  organizationId: "org_demo",
+  organizationId: null,
   teamId: null,
   projectId: null,
   environment: null,

@@ -28,6 +28,20 @@ describe("ChartFilter", () => {
     expect(onChange).toHaveBeenCalledWith({ env: "prod" });
   });
 
+  it("shows option labels in the closed trigger, not raw values", () => {
+    render(<ChartFilter filters={filters} value={{ env: "prod" }} onChange={vi.fn()} />);
+    const trigger = screen.getByRole("combobox");
+    expect(trigger).toHaveTextContent("Production");
+    expect(trigger).not.toHaveTextContent("prod");
+  });
+
+  it("shows All for a cleared filter instead of __all__", () => {
+    render(<ChartFilter filters={filters} value={{ env: null }} onChange={vi.fn()} />);
+    const trigger = screen.getByRole("combobox");
+    expect(trigger).toHaveTextContent("All");
+    expect(trigger).not.toHaveTextContent("__all__");
+  });
+
   it("has no detectable accessibility violations", async () => {
     const { container } = render(
       <ChartFilter filters={filters} value={{ env: "prod" }} onChange={vi.fn()} />

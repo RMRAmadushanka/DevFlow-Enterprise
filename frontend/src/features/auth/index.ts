@@ -1,4 +1,5 @@
 export { AuthLayout } from "./components/auth-layout";
+export { AuthProgress } from "./components/auth-progress";
 export { KeycloakAuthRedirect } from "./components/keycloak-auth-redirect";
 export { EmailVerification } from "./components/email-verification";
 export { PasswordStrength } from "./components/password-strength";

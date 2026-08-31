@@ -76,12 +76,15 @@ export interface TaskActivityItem {
     | "commented"
     | "attachment"
     | "checklist"
-    | "moved";
+    | "moved"
+    | "time_logged"
+    | "linked";
   actorName: string;
   summary: string;
   timestamp: string;
   meta?: string;
 }
+
 
 export interface TaskTimeTracking {
   estimatedMinutes: number;

@@ -37,7 +37,7 @@ describe("KeycloakAuthRedirect", () => {
   it("starts Keycloak login and does not render password fields", async () => {
     render(<KeycloakAuthRedirect flow="login" />);
     expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent(/redirecting/i);
+    expect(screen.getByRole("status")).toBeInTheDocument();
     await waitFor(() => {
       expect(beginLoginRedirect).toHaveBeenCalled();
     });

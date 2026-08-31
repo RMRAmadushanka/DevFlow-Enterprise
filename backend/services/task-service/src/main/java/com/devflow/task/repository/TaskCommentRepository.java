@@ -1,0 +1,17 @@
+package com.devflow.task.repository;
+
+import com.devflow.task.entity.TaskComment;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+public interface TaskCommentRepository extends JpaRepository<TaskComment, UUID> {
+
+    List<TaskComment> findByTaskIdOrderByCreatedAtAsc(UUID taskId);
+
+    Optional<TaskComment> findByIdAndTaskId(UUID id, UUID taskId);
+
+    long countByTaskId(UUID taskId);
+}

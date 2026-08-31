@@ -1,5 +1,6 @@
 import type { TaskAttachment } from "../types/task.types";
 import { TaskNotFoundError } from "../utils/errors";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 import { taskService } from "./task.service";
 
 const delay = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,7 +11,8 @@ let attachmentSeq = 1;
 async function load(taskId: string): Promise<TaskAttachment[]> {
   const detail = await taskService.getById(taskId);
   if (!attachmentsByTask.has(taskId)) {
-    attachmentsByTask.set(taskId, [...detail.attachments]);
+    // Live tasks return empty attachments; do not invent demo files.
+    attachmentsByTask.set(taskId, isLiveBackendMode() ? [] : [...detail.attachments]);
   }
   return attachmentsByTask.get(taskId) ?? [];
 }

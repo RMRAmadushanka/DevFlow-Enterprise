@@ -4,9 +4,9 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AlertBanner } from "@/components/feedback/alert";
-import { PageSkeleton } from "@/components/architecture/loading";
 import { routes } from "@/config/routes";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { AuthProgress } from "@/features/auth/components/auth-progress";
 import { oidcAuthService } from "@/features/auth/services/oidc-auth.service";
 import { toAuthErrorMessage } from "@/features/auth/utils/errors";
 import { AuthLoading, useKeycloakAuthInit } from "@/lib/auth/keycloak-auth-provider";
@@ -82,7 +82,7 @@ function AuthCallbackContent() {
     );
   }
 
-  return <AuthLoading />;
+  return <AuthLoading label="Signing in" />;
 }
 
 /**
@@ -91,7 +91,7 @@ function AuthCallbackContent() {
  */
 export default function AuthCallbackPage() {
   return (
-    <React.Suspense fallback={<PageSkeleton variant="form" />}>
+    <React.Suspense fallback={<AuthProgress label="Signing in" />}>
       <AuthCallbackContent />
     </React.Suspense>
   );

@@ -80,3 +80,26 @@ export type {
   UpdateProjectStatusRequest,
   UpdateProjectTagRequest,
 } from "./project";
+
+export type {
+  CreateTaskRequest,
+  TaskDto,
+  TaskDetailDto,
+  TaskLabelDto,
+  TaskListQuery,
+  TaskPage,
+  TaskUserDto,
+  UpdateTaskRequest,
+  CommentDto,
+  ChecklistItemDto,
+  RelationDto,
+  ActivityDto,
+  TimeEntryDto,
+} from "./task";
+export type {
+  SprintDto,
+  CreateSprintRequest,
+  UpdateSprintRequest,
+  SprintListQuery,
+  SprintPage,
+} from "./sprint";

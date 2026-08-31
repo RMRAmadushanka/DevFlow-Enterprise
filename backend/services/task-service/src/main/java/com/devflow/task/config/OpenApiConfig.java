@@ -17,7 +17,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("DevFlow task-service")
-                        .description("Phase 1 foundation â€” no business features yet")
+                        .description("Task CRUD, search, and board data for DevFlow")
                         .version("0.1.0"))
                 .addSecurityItem(new SecurityRequirement().addList(scheme))
                 .components(new Components().addSecuritySchemes(scheme,

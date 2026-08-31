@@ -12,9 +12,12 @@ import { TextareaField } from "@/components/forms/textarea";
 import { SelectField } from "@/components/forms/select";
 import { SubmitButton } from "@/components/forms/form-actions";
 import { AlertBanner } from "@/components/feedback/alert";
+import { useProjects } from "@/features/projects";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 import { PROJECT_OPTIONS } from "../constants/sprint.constants";
 import { useCreateSprint, useUpdateSprint } from "../hooks/use-sprints";
+import { isSprintApiEnabled } from "../services/sprint-api.service";
 import {
   createSprintSchema,
   updateSprintSchema,
@@ -29,16 +32,35 @@ export interface SprintFormProps {
   sprint?: Sprint;
   defaultProjectId?: string;
   compact?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
 }
 
 function CreateSprintFormInner({
   defaultProjectId,
   compact,
+  formId,
+  hideSubmit,
 }: {
   defaultProjectId?: string;
   compact?: boolean;
+  formId?: string;
+  hideSubmit?: boolean;
 }) {
   const create = useCreateSprint();
+  const liveSprints = isSprintApiEnabled();
+  const liveMode = isLiveBackendMode();
+  const { data: projectsData } = useProjects({ enabled: liveSprints || liveMode });
+
+  const projectOptions = React.useMemo(() => {
+    if (liveSprints || liveMode) {
+      return (projectsData?.items ?? []).map((project) => ({
+        value: project.id,
+        label: `${project.key} — ${project.name}`,
+      }));
+    }
+    return [...PROJECT_OPTIONS];
+  }, [liveMode, liveSprints, projectsData?.items]);
 
   const form = useAppForm({
     schema: createSprintSchema,
@@ -46,7 +68,7 @@ function CreateSprintFormInner({
       name: "",
       goal: "",
       description: "",
-      projectId: defaultProjectId ?? PROJECT_OPTIONS[0]?.value ?? "",
+      projectId: defaultProjectId ?? "",
       startDate: "",
       endDate: "",
       capacityPoints: 40,
@@ -66,6 +88,12 @@ function CreateSprintFormInner({
     },
   });
 
+  React.useEffect(() => {
+    if (!form.getValues("projectId") && (defaultProjectId || projectOptions[0]?.value)) {
+      form.setValue("projectId", defaultProjectId || projectOptions[0]!.value);
+    }
+  }, [defaultProjectId, form, projectOptions]);
+
   return (
     <div className="flex flex-col gap-4">
       {form.submitError || create.error ? (
@@ -75,7 +103,14 @@ function CreateSprintFormInner({
           description={toSprintErrorMessage(form.submitError || create.error)}
         />
       ) : null}
-      <AppForm form={form} className="gap-4">
+      {(liveSprints || liveMode) && projectOptions.length === 0 ? (
+        <AlertBanner
+          tone="warning"
+          title="No projects available"
+          description="Create a project first, then add sprints to it."
+        />
+      ) : null}
+      <AppForm form={form} id={formId} className="gap-4">
         <FormController
           name="name"
           control={form.control}
@@ -110,7 +145,7 @@ function CreateSprintFormInner({
           render={({ field, fieldState }) => (
             <SelectField
               label="Project"
-              options={PROJECT_OPTIONS}
+              options={projectOptions}
               value={field.value}
               onValueChange={field.onChange}
               error={fieldState.error?.message}
@@ -173,9 +208,11 @@ function CreateSprintFormInner({
             )}
           />
         </div>
-        <SubmitButton loading={form.isSubmitting || create.isPending} loadingText="Creating…">
-          Create sprint
-        </SubmitButton>
+        {hideSubmit ? null : (
+          <SubmitButton loading={form.isSubmitting || create.isPending} loadingText="Creating…">
+            Create sprint
+          </SubmitButton>
+        )}
       </AppForm>
     </div>
   );
@@ -183,6 +220,19 @@ function CreateSprintFormInner({
 
 function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: boolean }) {
   const update = useUpdateSprint(sprint.id);
+  const liveSprints = isSprintApiEnabled();
+  const liveMode = isLiveBackendMode();
+  const { data: projectsData } = useProjects({ enabled: liveSprints || liveMode });
+
+  const projectOptions = React.useMemo(() => {
+    if (liveSprints || liveMode) {
+      return (projectsData?.items ?? []).map((project) => ({
+        value: project.id,
+        label: `${project.key} — ${project.name}`,
+      }));
+    }
+    return [...PROJECT_OPTIONS];
+  }, [liveMode, liveSprints, projectsData?.items]);
 
   const form = useAppForm({
     schema: updateSprintSchema,
@@ -254,7 +304,7 @@ function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: bo
           render={({ field, fieldState }) => (
             <SelectField
               label="Project"
-              options={PROJECT_OPTIONS}
+              options={projectOptions}
               value={field.value}
               onValueChange={field.onChange}
               error={fieldState.error?.message}
@@ -325,11 +375,18 @@ function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: bo
   );
 }
 
-function SprintForm({ mode, sprint, defaultProjectId, compact }: SprintFormProps) {
+function SprintForm({ mode, sprint, defaultProjectId, compact, formId, hideSubmit }: SprintFormProps) {
   if (mode === "edit" && sprint) {
     return <EditSprintFormInner sprint={sprint} compact={compact} />;
   }
-  return <CreateSprintFormInner defaultProjectId={defaultProjectId} compact={compact} />;
+  return (
+    <CreateSprintFormInner
+      defaultProjectId={defaultProjectId}
+      compact={compact}
+      formId={formId}
+      hideSubmit={hideSubmit}
+    />
+  );
 }
 
 export { SprintForm };

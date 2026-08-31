@@ -8,7 +8,7 @@ spring:
       write-dates-as-timestamps: false
 
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:15432/devflow_audit}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/devflow_audit}
     username: ${DB_USERNAME:devflow}
     password: ${DB_PASSWORD:devflow}
     driver-class-name: org.postgresql.Driver

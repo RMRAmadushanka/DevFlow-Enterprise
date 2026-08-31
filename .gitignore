@@ -5,3 +5,5 @@ docs/backend-architecture/*.md
 # Backend local secrets / build (also covered by backend/.gitignore)
 backend/.env
 backend/**/target/
+
+backend/infrastructure/docker/.env

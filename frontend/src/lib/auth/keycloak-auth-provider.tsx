@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import { PageSkeleton } from "@/components/architecture/loading";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { AuthProgress } from "@/features/auth/components/auth-progress";
 import { setUnauthorizedHandler } from "@/lib/api";
 import {
   buildSessionIfAuthenticated,
@@ -150,11 +150,7 @@ export function KeycloakAuthProvider({ children }: { children: React.ReactNode }
   );
 }
 
-/** Reusable auth bootstrap loading UI — avoids flashing protected content. */
-export function AuthLoading() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center p-6" role="status" aria-live="polite">
-      <PageSkeleton variant="form" />
-    </div>
-  );
+/** Minimal wait UI for auth bootstrap / short redirects. */
+export function AuthLoading({ label = "Loading" }: { label?: string } = {}) {
+  return <AuthProgress label={label} />;
 }

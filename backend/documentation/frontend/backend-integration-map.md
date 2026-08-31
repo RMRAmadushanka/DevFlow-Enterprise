@@ -31,7 +31,7 @@ Related: [project-feature-api-mapping.md](./project-feature-api-mapping.md) (Pha
 | `/api/users/**`, `/api/v1/user/**` | user-service | 8082 |
 | `/api/organizations/**`, `/api/teams/**`, `/api/invitations/**`, `/api/v1/organization/**` | organization-service | 8083 |
 | `/api/projects/**`, `/api/v1/project/**` | project-service | 8084 |
-| `/api/tasks/**` | task-service (stub) | 8085 |
+| `/api/tasks/**` | task-service | 8085 |
 | `/api/sprints/**` | sprint-service (stub) | 8086 |
 | `/api/documents/**` | document-service (stub) | 8087 |
 | `/api/repositories/**` | repository-service (stub) | 8088 |

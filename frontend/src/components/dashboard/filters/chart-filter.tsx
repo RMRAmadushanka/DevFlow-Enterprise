@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import type { ChartFilterProps } from "./types";
 
+const ALL_VALUE = "__all__";
+
 /**
  * Multi-dropdown chart/dashboard filter bar.
  */
@@ -32,19 +34,36 @@ function ChartFilter({
     >
       {filters.map((filter) => {
         const selected = value[filter.id] ?? null;
+        const clearable = filter.clearable !== false;
+        const selectValue = selected ?? (clearable ? ALL_VALUE : null);
+
+        // Base UI Select needs `items` so the closed trigger shows labels,
+        // not raw values like "org_demo" / "__all__".
+        const items = [
+          ...(clearable ? [{ value: ALL_VALUE, label: "All" }] : []),
+          ...filter.options.map((option) => ({
+            value: option.value,
+            label: option.label,
+          })),
+        ];
+
         return (
           <div key={filter.id} className="flex min-w-36 flex-col gap-1">
-            <label htmlFor={`chart-filter-${filter.id}`} className="text-xs font-medium text-muted-foreground">
+            <label
+              htmlFor={`chart-filter-${filter.id}`}
+              className="text-xs font-medium text-muted-foreground"
+            >
               {filter.label}
             </label>
             <Select
-              value={selected ?? (filter.clearable !== false ? "__all__" : null)}
+              value={selectValue}
+              items={items}
               disabled={disabled}
               onValueChange={(next) => {
                 const raw = next == null ? null : String(next);
                 onChange({
                   ...value,
-                  [filter.id]: raw === "__all__" || raw === null ? null : raw,
+                  [filter.id]: raw === ALL_VALUE || raw === null ? null : raw,
                 });
               }}
             >
@@ -52,9 +71,7 @@ function ChartFilter({
                 <SelectValue placeholder={filter.placeholder ?? "All"} />
               </SelectTrigger>
               <SelectContent>
-                {filter.clearable !== false ? (
-                  <SelectItem value="__all__">All</SelectItem>
-                ) : null}
+                {clearable ? <SelectItem value={ALL_VALUE}>All</SelectItem> : null}
                 {filter.options.map((option) => (
                   <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                     {option.label}

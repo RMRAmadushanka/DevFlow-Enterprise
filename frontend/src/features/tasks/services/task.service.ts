@@ -18,8 +18,8 @@ import type {
   UpdateTaskPayload,
 } from "../types/task.types";
 import { TaskNotFoundError, TaskValidationError } from "../utils/errors";
-import { createStubAwareService } from "@/lib/api/stub-service";
 import { isLiveBackendMode } from "@/lib/api/live-api";
+import { isTaskApiEnabled, taskApiService } from "./task-api.service";
 
 const delay = (ms = 280) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -627,10 +627,62 @@ const mockTaskService = {
     detailExtras.set(taskId, detail);
     return detail;
   },
+
+  async createRelation(
+    taskId: string,
+    input: { type: import("../types/task.types").TaskRelationType; targetTaskId: string }
+  ): Promise<TaskDetail> {
+    const detail = await this.getById(taskId);
+    const target = await this.getById(input.targetTaskId);
+    const relation = {
+      id: `rel_${Date.now()}`,
+      type: input.type,
+      taskId: target.id,
+      taskKey: target.key,
+      taskTitle: target.title,
+      status: target.status,
+    };
+    const next = {
+      ...detail,
+      relations: [...detail.relations, relation],
+    };
+    detailExtras.set(taskId, next);
+    return next;
+  },
+
+  async deleteRelation(taskId: string, relationId: string): Promise<TaskDetail> {
+    const detail = await this.getById(taskId);
+    const next = {
+      ...detail,
+      relations: detail.relations.filter((item) => item.id !== relationId),
+    };
+    detailExtras.set(taskId, next);
+    return next;
+  },
+
+  async logTime(
+    taskId: string,
+    input: { minutes: number; note?: string }
+  ): Promise<TaskDetail> {
+    const detail = await this.getById(taskId);
+    const next = {
+      ...detail,
+      timeTracking: {
+        estimatedMinutes: detail.timeTracking.estimatedMinutes,
+        loggedMinutes: detail.timeTracking.loggedMinutes + Math.max(1, Math.round(input.minutes)),
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    void input.note;
+    detailExtras.set(taskId, next);
+    return next;
+  },
 };
 
-export const taskService = createStubAwareService("Tasks", mockTaskService, [
-  "list",
-  "getById",
-  "board",
-]);
+export const taskService = new Proxy(mockTaskService, {
+  get(target, prop, receiver) {
+    const api = isTaskApiEnabled() ? taskApiService : target;
+    const value = Reflect.get(api, prop, receiver);
+    return typeof value === "function" ? value.bind(api) : value;
+  },
+});
