@@ -23,6 +23,8 @@ public record SprintResponse(
         int velocity,
         String health,
         boolean archived,
+        UUID releaseId,
+        String releaseName,
         Instant createdAt,
         Instant updatedAt
 ) {

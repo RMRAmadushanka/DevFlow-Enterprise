@@ -4,3 +4,5 @@ export { organizationApi } from "./organization.api";
 export { projectApi } from "./project.api";
 export { taskApi } from "./task.api";
 export { sprintApi } from "./sprint.api";
+export { releaseApi } from "./release.api";
+export { analyticsApi } from "./analytics.api";

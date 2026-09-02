@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PermissionGuard } from "@/lib/permissions";
 import { routes } from "@/config/routes";
+import { downloadCsv, toCsv, type CsvColumn } from "@/lib/utils/csv";
 
 import {
   useArchiveSprint,
@@ -31,6 +32,47 @@ import {
   useStartSprint,
 } from "../hooks/use-sprints";
 import type { Sprint } from "../types/sprint.types";
+
+interface SprintCsvRow {
+  name: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  committedPoints: number;
+  completedPoints: number;
+  velocity: number;
+}
+
+const SPRINT_CSV_COLUMNS: CsvColumn<SprintCsvRow>[] = [
+  { key: "name", label: "Name" },
+  { key: "status", label: "Status" },
+  { key: "startDate", label: "Start date" },
+  { key: "endDate", label: "End date" },
+  { key: "committedPoints", label: "Committed points" },
+  { key: "completedPoints", label: "Completed points" },
+  { key: "velocity", label: "Velocity" },
+];
+
+function toSprintCsvRow(sprint: Sprint): SprintCsvRow {
+  return {
+    name: sprint.name,
+    status: sprint.status,
+    startDate: sprint.startDate,
+    endDate: sprint.endDate,
+    committedPoints: sprint.committedPoints,
+    completedPoints: sprint.completedPoints,
+    velocity: sprint.velocity,
+  };
+}
+
+function sprintFileName(name: string): string {
+  return `${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "sprint"}.csv`;
+}
+
+function exportSprints(sprints: Sprint[], filename: string) {
+  const csv = toCsv(sprints.map(toSprintCsvRow), SPRINT_CSV_COLUMNS);
+  downloadCsv(filename, csv);
+}
 
 export interface SprintQuickActionsProps {
   sprint: Sprint;
@@ -78,7 +120,7 @@ function SprintQuickActions({
                 if (onComplete) {
                   onComplete(sprint);
                 } else {
-                  void complete.mutateAsync(sprint.id);
+                  void complete.mutateAsync({ id: sprint.id });
                 }
               }}
             >
@@ -99,7 +141,10 @@ function SprintQuickActions({
         </PermissionGuard>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => toast.success("Sprint export started")}
+          onClick={() => {
+            exportSprints([sprint], sprintFileName(sprint.name));
+            toast.success("Sprint exported");
+          }}
         >
           <Download className="size-4" />
           Export
@@ -125,17 +170,26 @@ function SprintQuickActions({
 
 export interface SprintQuickActionsBarProps {
   sprint?: Sprint | null;
+  /** Full currently-loaded sprint list, exported in bulk when provided. */
+  sprints?: Sprint[];
   onCreateClick?: () => void;
   onComplete?: (sprint: Sprint) => void;
 }
 
-function SprintQuickActionsBar({ sprint, onComplete }: SprintQuickActionsBarProps) {
+function SprintQuickActionsBar({ sprint, sprints, onComplete }: SprintQuickActionsBarProps) {
   const start = useStartSprint();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <ExportButton
+        formats={["csv"]}
         onExport={async () => {
+          const rows = sprints && sprints.length > 0 ? sprints : sprint ? [sprint] : [];
+          if (rows.length === 0) {
+            toast.error("No sprints to export");
+            return;
+          }
+          exportSprints(rows, "sprints.csv");
           toast.success("Sprint export started");
         }}
       />

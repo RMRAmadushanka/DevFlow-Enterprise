@@ -26,14 +26,14 @@ export { SprintBurndownChart } from "./components/sprint-burndown-chart";
 export { SprintVelocityChart } from "./components/sprint-velocity-chart";
 export { SprintBurnupChart } from "./components/sprint-burnup-chart";
 
-export { CapacityPlanningCard } from "./components/capacity-planning-card";
+export { CapacityPlanningCard, CapacityPlanningSection } from "./components/capacity-planning-card";
 export { BacklogTaskCard } from "./components/backlog-task-card";
 export { BacklogBoard } from "./components/backlog-board";
 export { SprintTaskAssignment } from "./components/sprint-task-assignment";
 export { SprintPlanningBoard } from "./components/sprint-planning-board";
 export { SprintBoard } from "./components/sprint-board";
 
-export { SprintReviewCard } from "./components/sprint-review-card";
+export { SprintReviewCard, SprintReviewSection } from "./components/sprint-review-card";
 export { SprintRetrospective } from "./components/sprint-retrospective";
 export { SprintReports } from "./components/sprint-reports";
 export { SprintCalendar } from "./components/sprint-calendar";
@@ -45,6 +45,7 @@ export { EditSprintModal } from "./components/edit-sprint-modal";
 export { CompleteSprintModal } from "./components/complete-sprint-modal";
 export { DeleteSprintModal } from "./components/delete-sprint-modal";
 export { MoveTaskToSprintModal } from "./components/move-task-to-sprint-modal";
+export { ReleaseFormModal } from "./components/release-form-modal";
 
 export { CurrentSprintWidget } from "./components/widgets/current-sprint-widget";
 export { UpcomingSprintWidget } from "./components/widgets/upcoming-sprint-widget";
@@ -73,7 +74,19 @@ export {
   useMoveBacklogToSprint,
   useReorderBacklog,
   useReleases,
+  useRelease,
+  useCreateRelease,
+  useUpdateRelease,
+  useDeleteRelease,
   useVelocityHistory,
+  useRetrospective,
+  useCreateRetroItem,
+  useVoteRetroItem,
+  usePostRetroComment,
+  useReview,
+  useUpdateReview,
+  useCapacity,
+  useUpdateCapacity,
 } from "./hooks/use-sprints";
 
 export { useSprintStore } from "./store/sprint.store";

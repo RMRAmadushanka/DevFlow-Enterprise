@@ -10,6 +10,7 @@ export const createSprintSchema = z
     endDate: z.string().min(1, "End date is required"),
     capacityPoints: z.coerce.number().min(0, "Capacity must be numeric").max(1000),
     storyPointGoal: z.coerce.number().min(0, "Story points must be numeric").max(1000),
+    releaseId: z.string().optional().or(z.literal("")),
   })
   .superRefine((values, ctx) => {
     if (values.startDate && values.endDate && values.startDate > values.endDate) {
@@ -39,8 +40,18 @@ export const moveTaskToSprintSchema = z.object({
   taskIds: z.array(z.string()).min(1, "Select at least one task"),
 });
 
+export const releaseSchema = z.object({
+  name: z.string().min(2, "Release name is required").max(120),
+  version: z.string().max(40).optional().or(z.literal("")),
+  description: z.string().max(2000).optional().or(z.literal("")),
+  projectId: z.string().min(1, "Project is required"),
+  status: z.enum(["planned", "in_progress", "released", "delayed"]),
+  releaseDate: z.string().optional().or(z.literal("")),
+});
+
 export type CreateSprintFormValues = z.infer<typeof createSprintSchema>;
 export type UpdateSprintFormValues = z.infer<typeof updateSprintSchema>;
 export type CompleteSprintFormValues = z.infer<typeof completeSprintSchema>;
 export type DeleteSprintFormValues = z.infer<typeof deleteSprintSchema>;
 export type MoveTaskToSprintFormValues = z.infer<typeof moveTaskToSprintSchema>;
+export type ReleaseFormValues = z.infer<typeof releaseSchema>;

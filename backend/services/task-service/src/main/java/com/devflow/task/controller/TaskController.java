@@ -2,9 +2,13 @@ package com.devflow.task.controller;
 
 import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
+import com.devflow.task.dto.AssigneeAllocationResponse;
+import com.devflow.task.dto.BacklogReorderRequest;
+import com.devflow.task.dto.BacklogReorderResponse;
 import com.devflow.task.dto.BulkMoveResponse;
 import com.devflow.task.dto.BulkMoveToSprintRequest;
 import com.devflow.task.dto.CreateTaskRequest;
+import com.devflow.task.dto.ReleaseIncompleteResponse;
 import com.devflow.task.dto.TaskDetailResponse;
 import com.devflow.task.dto.TaskResponse;
 import com.devflow.task.dto.TaskSprintSummaryResponse;
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -93,6 +98,24 @@ public class TaskController {
     @Operation(summary = "Bulk move tasks into a sprint")
     public ApiResponse<BulkMoveResponse> bulkMoveToSprint(@Valid @RequestBody BulkMoveToSprintRequest request) {
         return ApiResponse.ok(taskService.bulkMoveToSprint(request));
+    }
+
+    @GetMapping("/sprint-allocation")
+    @Operation(summary = "Sprint member allocation (story points by assignee) for capacity planning")
+    public ApiResponse<List<AssigneeAllocationResponse>> sprintAllocation(@RequestParam UUID sprintId) {
+        return ApiResponse.ok(taskService.sprintAllocation(sprintId));
+    }
+
+    @PostMapping("/sprint/{sprintId}/release-incomplete")
+    @Operation(summary = "Release incomplete tasks from a sprint back to the backlog")
+    public ApiResponse<ReleaseIncompleteResponse> releaseIncomplete(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(taskService.releaseIncompleteFromSprint(sprintId));
+    }
+
+    @PatchMapping("/backlog-order")
+    @Operation(summary = "Persist backlog drag-and-drop order")
+    public ApiResponse<BacklogReorderResponse> reorderBacklog(@Valid @RequestBody BacklogReorderRequest request) {
+        return ApiResponse.ok(taskService.reorderBacklog(request));
     }
 
     @GetMapping("/{taskId}")

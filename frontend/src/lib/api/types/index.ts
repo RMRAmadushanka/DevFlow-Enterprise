@@ -102,4 +102,32 @@ export type {
   UpdateSprintRequest,
   SprintListQuery,
   SprintPage,
+  RetroColumnType,
+  RetroItemDto,
+  RetroCommentDto,
+  RetrospectiveDto,
+  CreateRetroItemRequest,
+  CreateRetroCommentRequest,
+  SprintReviewDto,
+  UpdateReviewRequest,
+  CapacityMemberDto,
+  SprintCapacityDto,
+  UpdateCapacityMemberRequest,
+  UpdateCapacityRequest,
+  CompleteSprintRequest,
+  ReorderBacklogRequest,
 } from "./sprint";
+export type {
+  ReleaseDto,
+  CreateReleaseRequest,
+  UpdateReleaseRequest,
+  ReleaseListQuery,
+} from "./release";
+export type {
+  VelocityTrendPointDto,
+  DashboardSnapshotBurndownPointDto,
+  DashboardSnapshotSprintDto,
+  DashboardSnapshotDto,
+  VelocityTrendQuery,
+  DashboardSnapshotQuery,
+} from "./analytics";

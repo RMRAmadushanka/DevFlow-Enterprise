@@ -1,11 +1,15 @@
 "use client";
 
+import * as React from "react";
 import { X } from "lucide-react";
 
 import { SelectField } from "@/components/forms/select";
 import { Button } from "@/components/ui/button";
+import { useProjects } from "@/features/projects";
+import { isLiveBackendMode } from "@/lib/api/live-api";
 
 import { PROJECT_OPTIONS, STATUS_OPTIONS } from "../constants/sprint.constants";
+import { isSprintApiEnabled } from "../services/sprint-api.service";
 import { useSprintStore } from "../store/sprint.store";
 import type { SprintStatus } from "../types/sprint.types";
 
@@ -13,6 +17,20 @@ function SprintFilters() {
   const filters = useSprintStore((s) => s.filters);
   const setFilters = useSprintStore((s) => s.setFilters);
   const resetFilters = useSprintStore((s) => s.resetFilters);
+
+  const liveSprints = isSprintApiEnabled();
+  const liveMode = isLiveBackendMode();
+  const { data: projectsData } = useProjects({ enabled: liveSprints || liveMode });
+
+  const projectOptions = React.useMemo(() => {
+    if (liveSprints || liveMode) {
+      return (projectsData?.items ?? []).map((project) => ({
+        value: project.id,
+        label: `${project.key} — ${project.name}`,
+      }));
+    }
+    return [...PROJECT_OPTIONS];
+  }, [liveMode, liveSprints, projectsData?.items]);
 
   const activeCount = [
     filters.status !== "all",
@@ -37,7 +55,7 @@ function SprintFilters() {
         onValueChange={(value) => {
           setFilters({ projectId: value === "all" ? null : value });
         }}
-        options={[{ value: "all", label: "All projects" }, ...PROJECT_OPTIONS]}
+        options={[{ value: "all", label: "All projects" }, ...projectOptions]}
         className="w-[160px]"
         size="sm"
       />

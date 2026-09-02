@@ -5,6 +5,8 @@ import com.devflow.common.constant.Roles;
 import com.devflow.common.security.SecurityContextUtils;
 import com.devflow.sprint.client.OrgPermissionResponse;
 import com.devflow.sprint.client.OrganizationClient;
+import com.devflow.sprint.client.UserClient;
+import com.devflow.sprint.client.UserResponse;
 import com.devflow.sprint.entity.Sprint;
 import com.devflow.sprint.exception.SprintAccessDeniedException;
 import feign.FeignException;
@@ -36,9 +38,11 @@ public class SprintAuthorizationService {
     public static final String PERM_MANAGE_BACKLOG = "sprint.manage_backlog";
 
     private final OrganizationClient organizationClient;
+    private final UserClient userClient;
 
-    public SprintAuthorizationService(OrganizationClient organizationClient) {
+    public SprintAuthorizationService(OrganizationClient organizationClient, UserClient userClient) {
         this.organizationClient = organizationClient;
+        this.userClient = userClient;
     }
 
     public void requireCreate(UUID organizationId, UUID userId) {
@@ -49,12 +53,30 @@ public class SprintAuthorizationService {
         require(has(sprint.getOrganizationId(), userId, PERM_READ), PERM_READ);
     }
 
+    /**
+     * Organization-scoped overload for aggregates that aren't owned by a specific {@link Sprint}
+     * (e.g. {@code Release}), so callers don't need a throwaway Sprint just to reuse this check.
+     */
+    public void requireRead(UUID organizationId, UUID userId) {
+        require(has(organizationId, userId, PERM_READ), PERM_READ);
+    }
+
     public void requireUpdate(Sprint sprint, UUID userId) {
         require(has(sprint.getOrganizationId(), userId, PERM_UPDATE), PERM_UPDATE);
     }
 
+    /** Organization-scoped overload — see {@link #requireRead(UUID, UUID)}. */
+    public void requireUpdate(UUID organizationId, UUID userId) {
+        require(has(organizationId, userId, PERM_UPDATE), PERM_UPDATE);
+    }
+
     public void requireDelete(Sprint sprint, UUID userId) {
         require(has(sprint.getOrganizationId(), userId, PERM_DELETE), PERM_DELETE);
+    }
+
+    /** Organization-scoped overload — see {@link #requireRead(UUID, UUID)}. */
+    public void requireDelete(UUID organizationId, UUID userId) {
+        require(has(organizationId, userId, PERM_DELETE), PERM_DELETE);
     }
 
     public void requireStart(Sprint sprint, UUID userId) {
@@ -77,7 +99,36 @@ public class SprintAuthorizationService {
             log.warn("permission={} result=denied reason=sprint_missing_organization_id", permission);
             return false;
         }
-        return orgPermissionCodes(organizationId, userId).contains(permission);
+        UUID applicationUserId = resolveApplicationUserId(userId);
+        return orgPermissionCodes(organizationId, applicationUserId).contains(permission);
+    }
+
+    /**
+     * Organization memberships (and therefore org-permission lookups) are keyed by user-service's
+     * internal application user id, not the raw JWT subject — see {@link UserResponse}. Mirrors
+     * organization-service's own {@code CurrentUserResolver}: try by-external-id first, fall back
+     * to {@code /me} (which lazily provisions the caller if this is their first authenticated
+     * request), and fall back to the raw subject only if user-service is unreachable so a
+     * transient outage denies access instead of throwing.
+     */
+    private UUID resolveApplicationUserId(UUID jwtSubjectId) {
+        try {
+            ApiResponse<UserResponse> response = userClient.getByExternalId(jwtSubjectId.toString());
+            if (response != null && response.success() && response.data() != null) {
+                return response.data().id();
+            }
+        } catch (Exception ex) {
+            log.debug("user_resolution_by_external_id_failed subject={} reason={}", jwtSubjectId, ex.getMessage());
+        }
+        try {
+            ApiResponse<UserResponse> me = userClient.getMe();
+            if (me != null && me.success() && me.data() != null) {
+                return me.data().id();
+            }
+        } catch (Exception ex) {
+            log.warn("user_resolution_failed subject={} reason={}", jwtSubjectId, ex.getMessage());
+        }
+        return jwtSubjectId;
     }
 
     private void require(boolean allowed, String permission) {
@@ -97,8 +148,10 @@ public class SprintAuthorizationService {
                     .map(OrgPermissionResponse::code)
                     .collect(Collectors.toSet());
         } catch (FeignException.NotFound | FeignException.Forbidden ex) {
+            log.debug("org_permission_lookup_denied organizationId={} userId={} status={}", organizationId, userId, ex.status());
             return Collections.emptySet();
         } catch (FeignException ex) {
+            log.warn("org_permission_lookup_failed organizationId={} userId={} status={}", organizationId, userId, ex.status());
             return Collections.emptySet();
         }
     }

@@ -2,6 +2,8 @@ package com.devflow.sprint.service;
 
 import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
+import com.devflow.sprint.client.BacklogReorderRequest;
+import com.devflow.sprint.client.BacklogReorderResponse;
 import com.devflow.sprint.client.BulkMoveSprintRequest;
 import com.devflow.sprint.client.BulkMoveSprintResponse;
 import com.devflow.sprint.client.TaskClient;
@@ -76,6 +78,29 @@ public class SprintPlanningService {
 
     @Transactional(readOnly = true)
     public List<BacklogItemResponse> backlog(UUID projectId) {
+        return fetchUnassignedTasks(projectId);
+    }
+
+    /**
+     * Persists the backlog's manual ordering via task-service, then re-fetches the backlog (now
+     * sorted by task-service's persisted rank) so the caller can update its view without a
+     * separate round-trip. Not scoped to one sprint, so this follows {@link #backlog(UUID)}'s
+     * existing convention of only taking a projectId (no per-sprint permission check) rather than
+     * inventing a new authorization path.
+     */
+    @Transactional
+    public List<BacklogItemResponse> reorderBacklog(UUID projectId, List<UUID> orderedTaskIds) {
+        try {
+            ApiResponse<BacklogReorderResponse> response =
+                    taskClient.reorderBacklog(new BacklogReorderRequest(projectId, orderedTaskIds));
+            int reorderedCount = response != null && response.success() && response.data() != null
+                    ? response.data().reorderedCount()
+                    : 0;
+            log.info("projectId={} reorderedCount={} result=backlog_reordered", projectId, reorderedCount);
+        } catch (FeignException ex) {
+            log.error("projectId={} result=backlog_reorder_failed status={}", projectId, ex.status());
+            throw ex;
+        }
         return fetchUnassignedTasks(projectId);
     }
 

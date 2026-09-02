@@ -1,4 +1,9 @@
+import { analyticsApi } from "@/lib/api";
 import { isLiveBackendMode, rejectStubMutation } from "@/lib/api/live-api";
+import type { DashboardSnapshotDto } from "@/lib/api/types/analytics";
+import { isAnalyticsApiEnabled } from "@/features/monitoring/services/analytics.service";
+import { useOrganizationStore } from "@/features/organization/store/organization.store";
+
 import {
   MOCK_FILTER_OPTIONS,
   MOCK_SNAPSHOT,
@@ -7,6 +12,7 @@ import type {
   DashboardFilters,
   DashboardFilterOptions,
   DashboardSnapshot,
+  DashboardSprint,
 } from "../types/dashboard.types";
 import { DashboardNetworkError } from "../utils/errors";
 
@@ -39,6 +45,42 @@ const EMPTY_FILTER_OPTIONS: DashboardFilterOptions = {
 
 function cloneSnapshot(): DashboardSnapshot {
   return structuredClone(MOCK_SNAPSHOT);
+}
+
+function daysUntil(dateStr: string): number {
+  const end = new Date(`${dateStr}T00:00:00.000Z`).getTime();
+  if (Number.isNaN(end)) return 0;
+  return Math.max(0, Math.ceil((end - Date.now()) / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * analytics-service's dashboard snapshot only projects raw sprint fields
+ * (points, dates, status) — no precomputed UI metrics. Completion % and
+ * remaining days are derived here; per-task counts aren't available from
+ * this endpoint at all (points aren't a 1:1 stand-in for task counts), so
+ * they're left at 0 rather than fabricated.
+ */
+function mapDashboardSprint(dto: DashboardSnapshotDto["sprint"]): DashboardSprint | null {
+  if (!dto) return null;
+  const committed = dto.committedPoints ?? 0;
+  const completed = dto.completedPoints ?? 0;
+  return {
+    id: dto.sprintId,
+    name: dto.name,
+    completionPercent: committed > 0 ? Math.round((completed / committed) * 100) : 0,
+    remainingDays: daysUntil(dto.endDate),
+    tasksCompleted: 0,
+    tasksRemaining: 0,
+    endsAt: dto.endDate,
+  };
+}
+
+function mapDashboardBurndown(dto: DashboardSnapshotDto["burndown"]): DashboardSnapshot["burndown"] {
+  return (dto ?? []).map((point) => ({
+    label: point.date,
+    remaining: point.remainingPoints ?? 0,
+    ideal: point.idealPoints ?? 0,
+  }));
 }
 
 /** Lightweight filter shaping for UI development — mock only. */
@@ -92,6 +134,27 @@ export const dashboardService = {
   },
 
   async getSnapshot(filters: DashboardFilters): Promise<DashboardSnapshot> {
+    if (isAnalyticsApiEnabled()) {
+      const organizationId =
+        filters.organizationId ?? useOrganizationStore.getState().currentOrganizationId ?? undefined;
+      if (!organizationId) {
+        // No org context yet (e.g. org store hasn't hydrated on first render) — the endpoint
+        // requires organizationId, so wait for a real value instead of firing a doomed request.
+        return structuredClone(EMPTY_SNAPSHOT);
+      }
+      let dto: DashboardSnapshotDto;
+      try {
+        dto = await analyticsApi.getDashboardSnapshot(organizationId, filters.projectId ?? undefined);
+      } catch (error) {
+        console.error("Failed to load dashboard snapshot", error);
+        return structuredClone(EMPTY_SNAPSHOT);
+      }
+      return {
+        ...structuredClone(EMPTY_SNAPSHOT),
+        sprint: mapDashboardSprint(dto.sprint),
+        burndown: mapDashboardBurndown(dto.burndown),
+      };
+    }
     if (isLiveBackendMode()) {
       return structuredClone(EMPTY_SNAPSHOT);
     }

@@ -53,6 +53,8 @@ export const routes = {
     sprintNew: "/sprints/new",
     sprint: (id: string) => `/sprints/${id}` as const,
     sprintEdit: (id: string) => `/sprints/${id}/edit` as const,
+    sprintReports: (id: string) => `/sprints/${id}/reports` as const,
+    sprintRetrospective: (id: string) => `/sprints/${id}/retrospective` as const,
     projectSprints: (projectId: string) => `/projects/${projectId}/sprints` as const,
     projectBacklog: (projectId: string) => `/projects/${projectId}/backlog` as const,
     projectReleases: (projectId: string) => `/projects/${projectId}/releases` as const,

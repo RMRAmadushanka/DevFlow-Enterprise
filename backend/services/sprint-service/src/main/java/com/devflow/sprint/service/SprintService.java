@@ -1,22 +1,29 @@
 package com.devflow.sprint.service;
 
+import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
+import com.devflow.sprint.client.ReleaseIncompleteResponse;
+import com.devflow.sprint.client.TaskClient;
 import com.devflow.sprint.domain.SprintDomainRules;
 import com.devflow.sprint.dto.CreateSprintRequest;
 import com.devflow.sprint.dto.SprintResponse;
 import com.devflow.sprint.dto.SprintStatusUpdateRequest;
 import com.devflow.sprint.dto.UpdateSprintRequest;
 import com.devflow.sprint.dto.VelocityPointResponse;
+import com.devflow.sprint.entity.Release;
 import com.devflow.sprint.entity.Sprint;
 import com.devflow.sprint.entity.SprintHealth;
 import com.devflow.sprint.entity.SprintStatus;
 import com.devflow.sprint.events.SprintEventPublisher;
 import com.devflow.sprint.events.SprintEventType;
+import com.devflow.sprint.exception.ReleaseNotFoundException;
 import com.devflow.sprint.exception.SprintNotFoundException;
 import com.devflow.sprint.exception.SprintValidationException;
 import com.devflow.sprint.mapper.SprintMapper;
+import com.devflow.sprint.repository.ReleaseRepository;
 import com.devflow.sprint.repository.SprintRepository;
 import com.devflow.sprint.security.SecurityUtils;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -42,19 +49,25 @@ public class SprintService {
     private final SprintAuthorizationService authorizationService;
     private final SprintEventPublisher eventPublisher;
     private final SprintActivityService activityService;
+    private final TaskClient taskClient;
+    private final ReleaseRepository releaseRepository;
 
     public SprintService(
             SprintRepository sprintRepository,
             SprintMapper sprintMapper,
             SprintAuthorizationService authorizationService,
             SprintEventPublisher eventPublisher,
-            SprintActivityService activityService
+            SprintActivityService activityService,
+            TaskClient taskClient,
+            ReleaseRepository releaseRepository
     ) {
         this.sprintRepository = sprintRepository;
         this.sprintMapper = sprintMapper;
         this.authorizationService = authorizationService;
         this.eventPublisher = eventPublisher;
         this.activityService = activityService;
+        this.taskClient = taskClient;
+        this.releaseRepository = releaseRepository;
     }
 
     @Transactional
@@ -88,12 +101,13 @@ public class SprintService {
         sprint.setHealth(SprintHealth.UNKNOWN);
         sprint.setArchived(false);
         sprint.setCreatedBy(actorId);
+        if (request.releaseId() != null) {
+            applyRelease(sprint, request.releaseId());
+        }
 
         sprint = sprintRepository.save(sprint);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("sprintId", sprint.getId().toString());
-        payload.put("projectId", sprint.getProjectId().toString());
+        Map<String, Object> payload = basePayload(sprint);
         payload.put("actorUserId", actorId.toString());
         eventPublisher.publish(SprintEventType.SPRINT_CREATED, sprint.getId().toString(), payload);
         log.info("eventType=SPRINT_CREATED userId={} sprintId={} result=success", actorId, sprint.getId());
@@ -188,6 +202,9 @@ public class SprintService {
         } else if (Boolean.FALSE.equals(request.archived())) {
             sprint.setArchived(false);
         }
+        if (request.releaseId() != null) {
+            applyRelease(sprint, request.releaseId());
+        }
 
         if (sprint.getEndDate().isBefore(sprint.getStartDate())) {
             throw new SprintValidationException("End date must be after start date");
@@ -195,11 +212,9 @@ public class SprintService {
 
         sprint = sprintRepository.save(sprint);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("sprintId", sprintId.toString());
+        Map<String, Object> payload = basePayload(sprint);
         payload.put("actorUserId", actorId.toString());
         payload.put("previousStatus", previousStatus.name());
-        payload.put("status", sprint.getStatus().name());
         eventPublisher.publish(SprintEventType.SPRINT_UPDATED, sprintId.toString(), payload);
         log.info("eventType=SPRINT_UPDATED userId={} sprintId={} result=success", actorId, sprintId);
         activityService.record(sprintId, actorId, SecurityUtils.currentUsername(),
@@ -234,7 +249,7 @@ public class SprintService {
             case ARCHIVED -> SprintEventType.SPRINT_ARCHIVED;
             default -> SprintEventType.SPRINT_UPDATED;
         };
-        publishStatusChange(sprintId, actorId, previous, target, eventType);
+        publishStatusChange(sprint, actorId, previous, target, eventType);
         return sprintMapper.toResponse(sprint);
     }
 
@@ -248,12 +263,20 @@ public class SprintService {
         SprintStatus previous = sprint.getStatus();
         sprint.setStatus(SprintStatus.ACTIVE);
         sprint = sprintRepository.save(sprint);
-        publishStatusChange(sprintId, actorId, previous, SprintStatus.ACTIVE, SprintEventType.SPRINT_STARTED);
+        publishStatusChange(sprint, actorId, previous, SprintStatus.ACTIVE, SprintEventType.SPRINT_STARTED);
         return sprintMapper.toResponse(sprint);
     }
 
+    /**
+     * @param moveIncompleteToBacklog when true, best-effort asks task-service to release this
+     *                                sprint's incomplete tasks back to the project backlog after
+     *                                the status change has already committed. A failure there is
+     *                                logged and swallowed (matches SprintPlanningService's/
+     *                                SprintAggregateService's handling of TaskClient failures) so
+     *                                it never rolls back the sprint's COMPLETED status.
+     */
     @Transactional
-    public SprintResponse complete(UUID sprintId) {
+    public SprintResponse complete(UUID sprintId, boolean moveIncompleteToBacklog) {
         Sprint sprint = require(sprintId);
         UUID actorId = SecurityUtils.requireCurrentUserId();
         authorizationService.requireComplete(sprint, actorId);
@@ -262,8 +285,30 @@ public class SprintService {
         SprintStatus previous = sprint.getStatus();
         sprint.setStatus(SprintStatus.COMPLETED);
         sprint = sprintRepository.save(sprint);
-        publishStatusChange(sprintId, actorId, previous, SprintStatus.COMPLETED, SprintEventType.SPRINT_COMPLETED);
+        publishStatusChange(sprint, actorId, previous, SprintStatus.COMPLETED, SprintEventType.SPRINT_COMPLETED);
+
+        if (moveIncompleteToBacklog) {
+            releaseIncompleteToBacklog(sprintId, actorId);
+        }
+
         return sprintMapper.toResponse(sprint);
+    }
+
+    private void releaseIncompleteToBacklog(UUID sprintId, UUID actorId) {
+        try {
+            ApiResponse<ReleaseIncompleteResponse> response = taskClient.releaseIncomplete(sprintId);
+            int releasedCount = response != null && response.success() && response.data() != null
+                    ? response.data().releasedCount()
+                    : 0;
+            activityService.record(sprintId, actorId, SecurityUtils.currentUsername(),
+                    "TASKS_RELEASED_TO_BACKLOG",
+                    "released " + releasedCount + (releasedCount == 1 ? " incomplete task" : " incomplete tasks") + " to the backlog");
+            log.info("sprintId={} userId={} releasedCount={} result=incomplete_tasks_released",
+                    sprintId, actorId, releasedCount);
+        } catch (FeignException ex) {
+            log.warn("sprintId={} userId={} result=release_incomplete_failed status={}",
+                    sprintId, actorId, ex.status());
+        }
     }
 
     @Transactional
@@ -277,7 +322,7 @@ public class SprintService {
         sprint.setStatus(SprintStatus.ARCHIVED);
         sprint.setArchived(true);
         sprint = sprintRepository.save(sprint);
-        publishStatusChange(sprintId, actorId, previous, SprintStatus.ARCHIVED, SprintEventType.SPRINT_ARCHIVED);
+        publishStatusChange(sprint, actorId, previous, SprintStatus.ARCHIVED, SprintEventType.SPRINT_ARCHIVED);
         return sprintMapper.toResponse(sprint);
     }
 
@@ -287,11 +332,11 @@ public class SprintService {
         UUID actorId = SecurityUtils.requireCurrentUserId();
         authorizationService.requireDelete(sprint, actorId);
 
+        Map<String, Object> payload = basePayload(sprint);
+        payload.put("actorUserId", actorId.toString());
+
         sprintRepository.deleteById(sprintId);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("sprintId", sprintId.toString());
-        payload.put("actorUserId", actorId.toString());
         eventPublisher.publish(SprintEventType.SPRINT_DELETED, sprintId.toString(), payload);
         log.info("eventType=SPRINT_DELETED userId={} sprintId={} result=success", actorId, sprintId);
     }
@@ -307,18 +352,37 @@ public class SprintService {
     }
 
     private void publishStatusChange(
-            UUID sprintId, UUID actorId, SprintStatus previous, SprintStatus current, SprintEventType eventType
+            Sprint sprint, UUID actorId, SprintStatus previous, SprintStatus current, SprintEventType eventType
     ) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("sprintId", sprintId.toString());
+        UUID sprintId = sprint.getId();
+        Map<String, Object> payload = basePayload(sprint);
         payload.put("actorUserId", actorId.toString());
         payload.put("previousStatus", previous.name());
-        payload.put("status", current.name());
         eventPublisher.publish(eventType, sprintId.toString(), payload);
         log.info("eventType={} userId={} sprintId={} status={} result=success",
                 eventType, actorId, sprintId, current);
         activityService.record(sprintId, actorId, SecurityUtils.currentUsername(),
                 eventType.name(), statusChangeSummary(current));
+    }
+
+    /**
+     * Common fields every sprint lifecycle event carries, so analytics-service (and any other
+     * consumer) can rely on them being present regardless of which event type it is.
+     */
+    private static Map<String, Object> basePayload(Sprint sprint) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sprintId", sprint.getId().toString());
+        payload.put("projectId", sprint.getProjectId() != null ? sprint.getProjectId().toString() : null);
+        payload.put("organizationId", sprint.getOrganizationId() != null ? sprint.getOrganizationId().toString() : null);
+        payload.put("name", sprint.getName());
+        payload.put("status", sprint.getStatus() != null ? sprint.getStatus().name() : null);
+        payload.put("startDate", sprint.getStartDate() != null ? sprint.getStartDate().toString() : null);
+        payload.put("endDate", sprint.getEndDate() != null ? sprint.getEndDate().toString() : null);
+        payload.put("committedPoints", sprint.getCommittedPoints());
+        payload.put("completedPoints", sprint.getCompletedPoints());
+        payload.put("velocity", sprint.getVelocity());
+        payload.put("health", sprint.getHealth() != null ? sprint.getHealth().name() : null);
+        return payload;
     }
 
     private static String statusChangeSummary(SprintStatus current) {
@@ -344,6 +408,17 @@ public class SprintService {
             case "velocity" -> Sort.by(Sort.Direction.DESC, "velocity");
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
+    }
+
+    /**
+     * Resolves releaseId to a Release row and denormalizes its name onto the sprint (same pattern
+     * as projectName), so reads never need to join out to the releases table.
+     */
+    private void applyRelease(Sprint sprint, UUID releaseId) {
+        Release release = releaseRepository.findById(releaseId)
+                .orElseThrow(() -> new ReleaseNotFoundException("Release not found: " + releaseId));
+        sprint.setReleaseId(release.getId());
+        sprint.setReleaseName(release.getName());
     }
 
     private static String blankToNull(String value) {

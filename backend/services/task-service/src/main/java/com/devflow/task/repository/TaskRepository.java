@@ -19,6 +19,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     List<Task> findByParentIdOrderByCreatedAtAsc(UUID parentId);
 
+    List<Task> findBySprintIdAndStatusNot(UUID sprintId, TaskStatus status);
+
     @Query("""
             SELECT t FROM Task t
             WHERE (:projectId IS NULL OR t.projectId = :projectId)
@@ -65,4 +67,19 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
             WHERE t.sprintId = :sprintId
             """)
     List<Object[]> sprintSummaryRaw(@Param("sprintId") UUID sprintId, @Param("doneStatus") TaskStatus doneStatus);
+
+    /**
+     * Sprint member allocation for capacity planning: story points summed per assignee,
+     * skipping unassigned and archived tasks. Row order: assigneeId, assigneeName, allocatedPoints.
+     */
+    @Query("""
+            SELECT t.assigneeId, MAX(t.assigneeName), COALESCE(SUM(COALESCE(t.storyPoints, 0)), 0)
+            FROM Task t
+            WHERE t.sprintId = :sprintId
+              AND t.archived = FALSE
+              AND t.assigneeId IS NOT NULL
+            GROUP BY t.assigneeId
+            ORDER BY MAX(t.assigneeName) ASC
+            """)
+    List<Object[]> sprintAllocationRaw(@Param("sprintId") UUID sprintId);
 }

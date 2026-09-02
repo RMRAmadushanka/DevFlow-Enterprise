@@ -6,13 +6,18 @@ import type {
   SprintDetail,
   SprintFilters,
   SprintListResult,
+  SprintMemberCapacity,
+  SprintReview,
+  SprintRetrospective,
   SprintSortField,
   UpdateSprintPayload,
 } from "../types/sprint.types";
 import { remainingDays } from "../utils/dates";
 import { SprintNotFoundError, SprintValidationError } from "../utils/errors";
 import { isLiveBackendMode } from "@/lib/api/live-api";
+import type { RetroColumnType } from "@/lib/api/types/sprint";
 import { isSprintApiEnabled, sprintApiService } from "./sprint-api.service";
+import { releaseService } from "./release.service";
 
 const delay = (ms = 280) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -145,6 +150,74 @@ function seedSprints(): Sprint[] {
 let sprints = isLiveBackendMode() ? [] : seedSprints();
 let sequence = 30;
 
+const capacityStore = new Map<string, SprintMemberCapacity[]>();
+const reviewStore = new Map<string, SprintReview>();
+const retroStore = new Map<string, SprintRetrospective>();
+let retroItemSequence = 100;
+let retroCommentSequence = 100;
+
+function defaultCapacity(): SprintMemberCapacity[] {
+  return [
+    { userId: "1", name: "Avery Chen", capacityPoints: 12, allocatedPoints: 10, availability: 100 },
+    { userId: "2", name: "Sam Rivera", capacityPoints: 12, allocatedPoints: 14, availability: 90 },
+    { userId: "3", name: "Jordan Lee", capacityPoints: 12, allocatedPoints: 8, availability: 100 },
+    { userId: "4", name: "Riley Kim", capacityPoints: 12, allocatedPoints: 10, availability: 80 },
+  ];
+}
+
+function defaultReview(sprint: Sprint): SprintReview {
+  return {
+    velocity: sprint.velocity,
+    completedPoints: sprint.completedPoints,
+    incompleteCount: Math.max(sprint.taskCount - sprint.completedTaskCount, 0),
+    deploymentSummary: "2 production deployments this sprint.",
+    teamPerformance: "On track with minor carry-over risk.",
+  };
+}
+
+function defaultRetrospective(sprint: Sprint): SprintRetrospective {
+  return {
+    wentWell: [
+      { id: "rw_1", text: "Clear goal and strong pairing", votes: 5, authorName: "Avery Chen" },
+    ],
+    needsImprovement: [
+      { id: "ni_1", text: "Late scope changes mid-sprint", votes: 3, authorName: "Sam Rivera" },
+    ],
+    actionItems: [
+      { id: "ai_1", text: "Freeze scope after planning day", votes: 4, authorName: "Jordan Lee" },
+    ],
+    comments: [
+      {
+        id: "rc_1",
+        authorName: "Riley Kim",
+        body: "Great collaboration on the auth work.",
+        timestamp: sprint.updatedAt,
+      },
+    ],
+  };
+}
+
+function ensureCapacity(sprint: Sprint): SprintMemberCapacity[] {
+  if (!capacityStore.has(sprint.id)) capacityStore.set(sprint.id, defaultCapacity());
+  return capacityStore.get(sprint.id)!;
+}
+
+function ensureReview(sprint: Sprint): SprintReview {
+  if (!reviewStore.has(sprint.id)) reviewStore.set(sprint.id, defaultReview(sprint));
+  return reviewStore.get(sprint.id)!;
+}
+
+function ensureRetrospective(sprint: Sprint): SprintRetrospective {
+  if (!retroStore.has(sprint.id)) retroStore.set(sprint.id, defaultRetrospective(sprint));
+  return retroStore.get(sprint.id)!;
+}
+
+function retroBucket(columnType: RetroColumnType): keyof Omit<SprintRetrospective, "comments"> {
+  if (columnType === "NEEDS_IMPROVEMENT") return "needsImprovement";
+  if (columnType === "ACTION_ITEM") return "actionItems";
+  return "wentWell";
+}
+
 function toDetail(sprint: Sprint): SprintDetail {
   const progress =
     sprint.committedPoints > 0
@@ -167,36 +240,7 @@ function toDetail(sprint: Sprint): SprintDetail {
     },
     burndown: makeBurndown(sprint.committedPoints),
     burnup: makeBurnup(sprint.committedPoints, sprint.completedPoints),
-    capacity: [
-      {
-        userId: "1",
-        name: "Avery Chen",
-        capacityPoints: 12,
-        allocatedPoints: 10,
-        availability: 100,
-      },
-      {
-        userId: "2",
-        name: "Sam Rivera",
-        capacityPoints: 12,
-        allocatedPoints: 14,
-        availability: 90,
-      },
-      {
-        userId: "3",
-        name: "Jordan Lee",
-        capacityPoints: 12,
-        allocatedPoints: 8,
-        availability: 100,
-      },
-      {
-        userId: "4",
-        name: "Riley Kim",
-        capacityPoints: 12,
-        allocatedPoints: 10,
-        availability: 80,
-      },
-    ],
+    capacity: ensureCapacity(sprint),
     taskIds: ["task_1", "task_2", "task_4", "task_6"],
     activity: [
       {
@@ -214,51 +258,9 @@ function toDetail(sprint: Sprint): SprintDetail {
     ],
     review:
       sprint.status === "completed" || sprint.status === "active"
-        ? {
-            completedTaskIds: ["task_6"],
-            incompleteTaskIds: ["task_1", "task_2"],
-            velocity: sprint.velocity,
-            deploymentSummary: "2 production deployments this sprint.",
-            teamPerformance: "On track with minor carry-over risk.",
-          }
+        ? ensureReview(sprint)
         : undefined,
-    retrospective:
-      sprint.status === "completed"
-        ? {
-            wentWell: [
-              {
-                id: "rw_1",
-                text: "Clear goal and strong pairing",
-                votes: 5,
-                authorName: "Avery Chen",
-              },
-            ],
-            needsImprovement: [
-              {
-                id: "ni_1",
-                text: "Late scope changes mid-sprint",
-                votes: 3,
-                authorName: "Sam Rivera",
-              },
-            ],
-            actionItems: [
-              {
-                id: "ai_1",
-                text: "Freeze scope after planning day",
-                votes: 4,
-                authorName: "Jordan Lee",
-              },
-            ],
-            comments: [
-              {
-                id: "rc_1",
-                authorName: "Riley Kim",
-                body: "Great collaboration on the auth work.",
-                timestamp: sprint.updatedAt,
-              },
-            ],
-          }
-        : undefined,
+    retrospective: sprint.status === "completed" ? ensureRetrospective(sprint) : undefined,
   };
 }
 
@@ -345,6 +347,9 @@ const mockSprintService = {
     }
     sequence += 1;
     const now = new Date().toISOString();
+    const release = payload.releaseId
+      ? (await releaseService.list(payload.projectId)).find((r) => r.id === payload.releaseId)
+      : undefined;
     const sprint: Sprint = {
       id: `sprint_${sequence}`,
       name: payload.name.trim(),
@@ -363,6 +368,8 @@ const mockSprintService = {
       completedTaskCount: 0,
       velocity: 0,
       health: "unknown",
+      releaseId: payload.releaseId ?? undefined,
+      releaseName: release?.name,
       archived: false,
       createdAt: now,
       updatedAt: now,
@@ -376,6 +383,11 @@ const mockSprintService = {
     const index = sprints.findIndex((item) => item.id === id);
     if (index < 0) throw new SprintNotFoundError();
     const current = sprints[index];
+    const release = payload.releaseId
+      ? (await releaseService.list(payload.projectId ?? current.projectId)).find(
+          (r) => r.id === payload.releaseId
+        )
+      : undefined;
     const next: Sprint = {
       ...current,
       name: payload.name?.trim() ?? current.name,
@@ -391,6 +403,8 @@ const mockSprintService = {
       storyPointGoal: payload.storyPointGoal ?? current.storyPointGoal,
       status: payload.status ?? current.status,
       archived: payload.archived ?? current.archived,
+      releaseId: payload.releaseId !== undefined ? (payload.releaseId ?? undefined) : current.releaseId,
+      releaseName: payload.releaseId !== undefined ? release?.name : current.releaseName,
       updatedAt: new Date().toISOString(),
     };
     if (next.archived) next.status = "archived";
@@ -402,7 +416,8 @@ const mockSprintService = {
     return this.update(id, { status: "active" });
   },
 
-  async complete(id: string): Promise<SprintDetail> {
+  async complete(id: string, moveIncompleteToBacklog?: boolean): Promise<SprintDetail> {
+    void moveIncompleteToBacklog; // No backlog linkage to persist in the mock store.
     return this.update(id, { status: "completed" });
   },
 
@@ -550,6 +565,128 @@ const mockSprintService = {
         committed: s.committedPoints,
         completed: s.completedPoints || s.velocity,
       }));
+  },
+
+  async getRetrospective(sprintId: string): Promise<SprintRetrospective> {
+    await delay(150);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    return ensureRetrospective(sprint);
+  },
+
+  async createRetroItem(
+    sprintId: string,
+    input: { columnType: RetroColumnType; text: string }
+  ): Promise<SprintRetrospective> {
+    await delay(200);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    if (!input.text?.trim()) throw new SprintValidationError("Retro item text is required");
+    const retro = ensureRetrospective(sprint);
+    const bucket = retroBucket(input.columnType);
+    retroItemSequence += 1;
+    retro[bucket] = [
+      ...retro[bucket],
+      {
+        id: `retro_item_${retroItemSequence}`,
+        text: input.text.trim(),
+        votes: 0,
+        authorName: "You",
+        votedByCurrentUser: false,
+      },
+    ];
+    return retro;
+  },
+
+  async voteRetroItem(sprintId: string, itemId: string): Promise<SprintRetrospective> {
+    await delay(120);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    const retro = ensureRetrospective(sprint);
+    (["wentWell", "needsImprovement", "actionItems"] as const).forEach((bucket) => {
+      retro[bucket] = retro[bucket].map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              votes: item.votedByCurrentUser ? item.votes - 1 : item.votes + 1,
+              votedByCurrentUser: !item.votedByCurrentUser,
+            }
+          : item
+      );
+    });
+    return retro;
+  },
+
+  async postRetroComment(sprintId: string, text: string): Promise<SprintRetrospective> {
+    await delay(180);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    if (!text?.trim()) throw new SprintValidationError("Comment text is required");
+    const retro = ensureRetrospective(sprint);
+    retroCommentSequence += 1;
+    retro.comments = [
+      ...retro.comments,
+      {
+        id: `retro_comment_${retroCommentSequence}`,
+        authorName: "You",
+        body: text.trim(),
+        timestamp: new Date().toISOString(),
+      },
+    ];
+    return retro;
+  },
+
+  async getReview(sprintId: string): Promise<SprintReview> {
+    await delay(150);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    return ensureReview(sprint);
+  },
+
+  async updateReview(
+    sprintId: string,
+    payload: { deploymentSummary?: string; teamPerformance?: string }
+  ): Promise<SprintReview> {
+    await delay(200);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    const review = ensureReview(sprint);
+    const next: SprintReview = {
+      ...review,
+      deploymentSummary: payload.deploymentSummary ?? review.deploymentSummary,
+      teamPerformance: payload.teamPerformance ?? review.teamPerformance,
+    };
+    reviewStore.set(sprintId, next);
+    return next;
+  },
+
+  async getCapacity(sprintId: string): Promise<SprintMemberCapacity[]> {
+    await delay(150);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    return ensureCapacity(sprint);
+  },
+
+  async updateCapacity(
+    sprintId: string,
+    members: Array<{ userId: string; userName: string; capacityPoints: number }>
+  ): Promise<SprintMemberCapacity[]> {
+    await delay(220);
+    const sprint = sprints.find((item) => item.id === sprintId);
+    if (!sprint) throw new SprintNotFoundError();
+    const existing = ensureCapacity(sprint);
+    const next = members.map((member) => {
+      const prior = existing.find((entry) => entry.userId === member.userId);
+      return {
+        userId: member.userId,
+        name: member.userName,
+        capacityPoints: member.capacityPoints,
+        allocatedPoints: prior?.allocatedPoints ?? 0,
+        availability: prior?.availability ?? 100,
+      };
+    });
+    capacityStore.set(sprintId, next);
+    return next;
   },
 };
 

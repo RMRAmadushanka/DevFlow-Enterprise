@@ -3,9 +3,13 @@ package com.devflow.task.service;
 import com.devflow.common.dto.PageResponse;
 import com.devflow.common.security.SecurityContextUtils;
 import com.devflow.task.dto.ActivityResponse;
+import com.devflow.task.dto.AssigneeAllocationResponse;
+import com.devflow.task.dto.BacklogReorderRequest;
+import com.devflow.task.dto.BacklogReorderResponse;
 import com.devflow.task.dto.BulkMoveResponse;
 import com.devflow.task.dto.BulkMoveToSprintRequest;
 import com.devflow.task.dto.ChecklistItemResponse;
+import com.devflow.task.dto.ReleaseIncompleteResponse;
 import com.devflow.task.dto.CreateTaskRequest;
 import com.devflow.task.dto.RelationResponse;
 import com.devflow.task.dto.TaskDetailResponse;
@@ -199,7 +203,7 @@ public class TaskService {
     ) {
         int pageIndex = page == null || page < 0 ? 0 : page;
         int pageSize = size == null || size < 1 ? 50 : Math.min(size, 100);
-        Pageable pageable = PageRequest.of(pageIndex, pageSize, resolveSort(sort));
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, resolveSort(sort, unassigned));
 
         TaskStatus statusEnum = status == null || status.isBlank() || "all".equalsIgnoreCase(status)
                 ? null
@@ -453,6 +457,68 @@ public class TaskService {
         return new BulkMoveResponse(movedTaskIds.size(), movedTaskIds, skippedTaskIds);
     }
 
+    @Transactional(readOnly = true)
+    public List<AssigneeAllocationResponse> sprintAllocation(UUID sprintId) {
+        List<Object[]> rows = taskRepository.sprintAllocationRaw(sprintId);
+        List<AssigneeAllocationResponse> result = new ArrayList<>();
+        for (Object[] row : rows) {
+            UUID assigneeId = (UUID) row[0];
+            String assigneeName = row[1] == null || ((String) row[1]).isBlank() ? "User" : (String) row[1];
+            int allocatedPoints = toInt(row[2]);
+            result.add(new AssigneeAllocationResponse(assigneeId, assigneeName, allocatedPoints));
+        }
+        return result;
+    }
+
+    @Transactional
+    public ReleaseIncompleteResponse releaseIncompleteFromSprint(UUID sprintId) {
+        List<Task> incomplete = taskRepository.findBySprintIdAndStatusNot(sprintId, TaskStatus.DONE);
+        List<UUID> releasedIds = new ArrayList<>();
+
+        for (Task task : incomplete) {
+            task.setSprintId(null);
+            task.setSprintName(null);
+            taskRepository.save(task);
+            releasedIds.add(task.getId());
+        }
+
+        if (!releasedIds.isEmpty()) {
+            UUID actorId = ActorSupport.currentUserIdOrNull();
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("taskIds", releasedIds.stream().map(UUID::toString).toList());
+            payload.put("fromSprintId", sprintId.toString());
+            payload.put("actorUserId", actorId == null ? null : actorId.toString());
+            eventPublisher.publish(TaskEventType.TASKS_RELEASED_FROM_SPRINT, sprintId.toString(), payload);
+        }
+
+        return new ReleaseIncompleteResponse(releasedIds.size(), releasedIds);
+    }
+
+    @Transactional
+    public BacklogReorderResponse reorderBacklog(BacklogReorderRequest request) {
+        List<Task> found = taskRepository.findAllById(request.orderedTaskIds());
+        Map<UUID, Task> byId = new LinkedHashMap<>();
+        for (Task task : found) {
+            byId.put(task.getId(), task);
+        }
+
+        List<UUID> reordered = new ArrayList<>();
+        List<UUID> skipped = new ArrayList<>();
+        int rank = 0;
+        for (UUID taskId : request.orderedTaskIds()) {
+            Task task = byId.get(taskId);
+            if (task == null || !Objects.equals(task.getProjectId(), request.projectId())) {
+                skipped.add(taskId);
+                continue;
+            }
+            task.setBacklogRank(rank++);
+            taskRepository.save(task);
+            reordered.add(taskId);
+        }
+
+        return new BacklogReorderResponse(reordered.size(), reordered, skipped);
+    }
+
     private int toInt(Object value) {
         return value == null ? 0 : ((Number) value).intValue();
     }
@@ -545,8 +611,11 @@ public class TaskService {
         }
     }
 
-    private Sort resolveSort(String sort) {
+    private Sort resolveSort(String sort, Boolean unassigned) {
         if (sort == null || sort.isBlank()) {
+            if (Boolean.TRUE.equals(unassigned)) {
+                return Sort.by(Sort.Direction.ASC, "backlogRank").and(Sort.by(Sort.Direction.ASC, "createdAt"));
+            }
             return Sort.by(Sort.Direction.DESC, "updatedAt");
         }
         return switch (sort.trim().toLowerCase(Locale.ROOT)) {

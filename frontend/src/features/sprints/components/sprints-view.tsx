@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BarChart3, LayoutGrid, List, Plus } from "lucide-react";
+import { BarChart3, GanttChartSquare, LayoutGrid, List, Plus } from "lucide-react";
 
 import { ListPageTemplate } from "@/components/layout/page-templates";
 import { DashboardSection } from "@/components/dashboard/layout";
@@ -103,6 +103,7 @@ function SprintsView({
   const completed = data?.completed ?? [];
   const archived = data?.archived ?? [];
   const allItems = data?.items ?? [];
+  const reportsTarget = current ?? allItems[0] ?? null;
 
   return (
     <>
@@ -115,11 +116,28 @@ function SprintsView({
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <SprintQuickActionsBar sprint={current} onComplete={setCompleteTarget} />
-            <Button render={<Link href={routes.app.sprints} />} variant="outline" size="sm">
-              <BarChart3 className="size-4" />
-              Reports
-            </Button>
+            <SprintQuickActionsBar sprint={current} sprints={allItems} onComplete={setCompleteTarget} />
+            {reportsTarget ? (
+              <Button
+                render={<Link href={routes.app.sprintReports(reportsTarget.id)} />}
+                variant="outline"
+                size="sm"
+              >
+                <BarChart3 className="size-4" />
+                Reports
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                title="Create a sprint to view its reports"
+              >
+                <BarChart3 className="size-4" />
+                Reports
+              </Button>
+            )}
             <SprintHeader onCreateClick={() => setCreateOpen(true)} />
           </div>
         }
@@ -152,6 +170,16 @@ function SprintsView({
                   onClick={() => setViewMode("table")}
                 >
                   <List className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant={viewMode === "timeline" ? "secondary" : "ghost"}
+                  aria-pressed={viewMode === "timeline"}
+                  aria-label="Timeline view"
+                  onClick={() => setViewMode("timeline")}
+                >
+                  <GanttChartSquare className="size-4" />
                 </Button>
               </div>
               <PermissionGuard permission="sprint.create">

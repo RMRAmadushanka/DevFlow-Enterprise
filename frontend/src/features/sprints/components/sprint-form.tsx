@@ -16,7 +16,7 @@ import { useProjects } from "@/features/projects";
 import { isLiveBackendMode } from "@/lib/api/live-api";
 
 import { PROJECT_OPTIONS } from "../constants/sprint.constants";
-import { useCreateSprint, useUpdateSprint } from "../hooks/use-sprints";
+import { useCreateSprint, useReleases, useUpdateSprint } from "../hooks/use-sprints";
 import { isSprintApiEnabled } from "../services/sprint-api.service";
 import {
   createSprintSchema,
@@ -34,6 +34,22 @@ export interface SprintFormProps {
   compact?: boolean;
   formId?: string;
   hideSubmit?: boolean;
+}
+
+const NO_RELEASE = "__none__";
+
+function useReleaseOptions(projectId: string | undefined) {
+  const { data: releases } = useReleases(projectId || undefined);
+  return React.useMemo(
+    () => [
+      { value: NO_RELEASE, label: "No release" },
+      ...(releases ?? []).map((release) => ({
+        value: release.id,
+        label: release.version ? `${release.name} (${release.version})` : release.name,
+      })),
+    ],
+    [releases]
+  );
 }
 
 function CreateSprintFormInner({
@@ -73,6 +89,7 @@ function CreateSprintFormInner({
       endDate: "",
       capacityPoints: 40,
       storyPointGoal: 30,
+      releaseId: NO_RELEASE,
     } satisfies CreateSprintFormValues,
     onSubmit: async (values) => {
       await create.mutateAsync({
@@ -84,6 +101,7 @@ function CreateSprintFormInner({
         endDate: values.endDate,
         capacityPoints: values.capacityPoints,
         storyPointGoal: values.storyPointGoal,
+        releaseId: values.releaseId && values.releaseId !== NO_RELEASE ? values.releaseId : undefined,
       });
     },
   });
@@ -93,6 +111,9 @@ function CreateSprintFormInner({
       form.setValue("projectId", defaultProjectId || projectOptions[0]!.value);
     }
   }, [defaultProjectId, form, projectOptions]);
+
+  const selectedProjectId = form.watch("projectId");
+  const releaseOptions = useReleaseOptions(selectedProjectId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -148,6 +169,19 @@ function CreateSprintFormInner({
               options={projectOptions}
               value={field.value}
               onValueChange={field.onChange}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <FormController
+          name="releaseId"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <SelectField
+              label="Release"
+              options={releaseOptions}
+              value={field.value || NO_RELEASE}
+              onValueChange={(value) => field.onChange(value === NO_RELEASE ? "" : value)}
               error={fieldState.error?.message}
             />
           )}
@@ -245,6 +279,7 @@ function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: bo
       endDate: sprint.endDate,
       capacityPoints: sprint.capacityPoints,
       storyPointGoal: sprint.storyPointGoal,
+      releaseId: sprint.releaseId ?? NO_RELEASE,
     } satisfies UpdateSprintFormValues,
     onSubmit: async (values) => {
       await update.mutateAsync({
@@ -256,9 +291,13 @@ function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: bo
         endDate: values.endDate,
         capacityPoints: values.capacityPoints,
         storyPointGoal: values.storyPointGoal,
+        releaseId: values.releaseId && values.releaseId !== NO_RELEASE ? values.releaseId : null,
       });
     },
   });
+
+  const selectedProjectId = form.watch("projectId");
+  const releaseOptions = useReleaseOptions(selectedProjectId);
 
   return (
     <div className="flex flex-col gap-4">
@@ -307,6 +346,19 @@ function EditSprintFormInner({ sprint, compact }: { sprint: Sprint; compact?: bo
               options={projectOptions}
               value={field.value}
               onValueChange={field.onChange}
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+        <FormController
+          name="releaseId"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <SelectField
+              label="Release"
+              options={releaseOptions}
+              value={field.value || NO_RELEASE}
+              onValueChange={(value) => field.onChange(value === NO_RELEASE ? "" : value)}
               error={fieldState.error?.message}
             />
           )}

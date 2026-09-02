@@ -23,6 +23,8 @@ export interface SprintDto {
   archived: boolean;
   createdAt: string;
   updatedAt: string;
+  releaseId?: string | null;
+  releaseName?: string | null;
 }
 
 export interface CreateSprintRequest {
@@ -36,6 +38,7 @@ export interface CreateSprintRequest {
   endDate: string;
   capacityPoints: number;
   storyPointGoal: number;
+  releaseId?: string | null;
 }
 
 export interface UpdateSprintRequest {
@@ -51,6 +54,7 @@ export interface UpdateSprintRequest {
   storyPointGoal?: number;
   status?: string;
   archived?: boolean;
+  releaseId?: string | null;
 }
 
 export interface SprintListQuery {
@@ -118,4 +122,81 @@ export interface SprintActivityDto {
   type: string;
   summary: string;
   createdAt: string;
+}
+
+export type RetroColumnType = "WENT_WELL" | "NEEDS_IMPROVEMENT" | "ACTION_ITEM";
+
+export interface RetroItemDto {
+  id: string;
+  columnType: RetroColumnType | string;
+  text: string;
+  authorId?: string | null;
+  authorName: string;
+  createdAt: string;
+  voteCount: number;
+  votedByCurrentUser: boolean;
+}
+
+export interface RetroCommentDto {
+  id: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface RetrospectiveDto {
+  items: RetroItemDto[];
+  comments: RetroCommentDto[];
+}
+
+export interface CreateRetroItemRequest {
+  columnType: RetroColumnType;
+  text: string;
+}
+
+export interface CreateRetroCommentRequest {
+  text: string;
+}
+
+export interface SprintReviewDto {
+  velocity: number;
+  completedPoints: number;
+  incompleteCount: number;
+  deploymentSummary: string | null;
+  teamPerformance: string | null;
+}
+
+export interface UpdateReviewRequest {
+  deploymentSummary?: string | null;
+  teamPerformance?: string | null;
+}
+
+export interface CapacityMemberDto {
+  userId: string;
+  userName: string;
+  capacityPoints: number;
+  allocatedPoints: number;
+}
+
+export interface SprintCapacityDto {
+  members: CapacityMemberDto[];
+}
+
+export interface UpdateCapacityMemberRequest {
+  userId: string;
+  userName: string;
+  capacityPoints: number;
+}
+
+export interface UpdateCapacityRequest {
+  members: UpdateCapacityMemberRequest[];
+}
+
+export interface CompleteSprintRequest {
+  moveIncompleteToBacklog?: boolean;
+}
+
+export interface ReorderBacklogRequest {
+  projectId: string;
+  orderedTaskIds: string[];
 }

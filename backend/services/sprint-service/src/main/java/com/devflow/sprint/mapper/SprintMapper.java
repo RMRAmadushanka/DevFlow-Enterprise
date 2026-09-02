@@ -52,6 +52,8 @@ public class SprintMapper {
                 sprint.getVelocity(),
                 toUiHealth(sprint.getHealth()),
                 sprint.isArchived(),
+                sprint.getReleaseId(),
+                sprint.getReleaseName(),
                 sprint.getCreatedAt(),
                 sprint.getUpdatedAt()
         );

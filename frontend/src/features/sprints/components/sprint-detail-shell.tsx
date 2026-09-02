@@ -13,12 +13,12 @@ import { PermissionGuard } from "@/lib/permissions";
 import { routes } from "@/config/routes";
 
 import { SPRINT_DETAIL_TABS } from "../constants/sprint.constants";
-import { useSprint, useSprintActivity, useVelocityHistory } from "../hooks/use-sprints";
+import { useRetrospective, useSprint, useSprintActivity, useVelocityHistory } from "../hooks/use-sprints";
 import type { SprintDetail } from "../types/sprint.types";
 import { CompleteSprintModal } from "./complete-sprint-modal";
 import { DeleteSprintModal } from "./delete-sprint-modal";
 import { EditSprintModal } from "./edit-sprint-modal";
-import { CapacityPlanningCard } from "./capacity-planning-card";
+import { CapacityPlanningSection } from "./capacity-planning-card";
 import { SprintBoard } from "./sprint-board";
 import { SprintGoalCard } from "./sprint-goal-card";
 import { SprintHeader } from "./sprint-header";
@@ -26,9 +26,8 @@ import { SprintMetrics } from "./sprint-metrics";
 import { SprintPlanningBoard } from "./sprint-planning-board";
 import { SprintProgressCard } from "./sprint-progress-card";
 import { SprintReports } from "./sprint-reports";
-import { SprintReviewCard } from "./sprint-review-card";
 import { SprintRetrospective } from "./sprint-retrospective";
-import { SprintSkeleton } from "./sprint-skeleton";
+import { ChartSkeleton, SprintSkeleton } from "./sprint-skeleton";
 
 export interface SprintDetailShellProps {
   sprintId: string;
@@ -38,6 +37,7 @@ function getActiveTab(pathname: string, sprintId: string): string {
   const base = `/sprints/${sprintId}`;
   if (pathname.startsWith(`${base}/edit`)) return "settings";
   if (pathname.includes("/reports")) return "reports";
+  if (pathname.includes("/retrospective")) return "retrospective";
   if (pathname.includes("/board")) return "board";
   if (pathname.includes("/members")) return "members";
   if (pathname.includes("/activity")) return "activity";
@@ -57,14 +57,19 @@ function SprintDetailShell({ sprintId }: SprintDetailShellProps) {
 
   const tabs = React.useMemo(
     () =>
-      SPRINT_DETAIL_TABS.map((tab) => ({
+      SPRINT_DETAIL_TABS.filter(
+        (tab) =>
+          tab.value !== "retrospective" ||
+          sprint?.status === "active" ||
+          sprint?.status === "completed"
+      ).map((tab) => ({
         ...tab,
         href:
           tab.value === "overview"
             ? routes.app.sprint(sprintId)
             : `${routes.app.sprint(sprintId)}/${tab.value}`,
       })),
-    [sprintId]
+    [sprintId, sprint?.status]
   );
 
   if (isLoading) {
@@ -132,6 +137,10 @@ function SprintDetailShell({ sprintId }: SprintDetailShellProps) {
 
           {activeTab === "reports" ? <SprintReportsTab sprint={sprint} /> : null}
 
+          {activeTab === "retrospective" ? (
+            <SprintRetrospectiveTab sprintId={sprintId} />
+          ) : null}
+
           {activeTab === "members" ? (
             <SprintMetrics metrics={sprint.metrics} />
           ) : null}
@@ -160,6 +169,21 @@ function SprintDetailShell({ sprintId }: SprintDetailShellProps) {
 function SprintReportsTab({ sprint }: { sprint: SprintDetail }) {
   const { data: velocityData, isLoading } = useVelocityHistory(sprint.projectId);
   return <SprintReports sprint={sprint} velocityData={velocityData} loading={isLoading} />;
+}
+
+function SprintRetrospectiveTab({ sprintId }: { sprintId: string }) {
+  const { data: retrospective, isLoading } = useRetrospective(sprintId);
+  if (isLoading) {
+    return <ChartSkeleton height={320} />;
+  }
+  if (!retrospective) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Retrospective data isn&apos;t available yet.
+      </p>
+    );
+  }
+  return <SprintRetrospective retrospective={retrospective} sprintId={sprintId} />;
 }
 
 function SprintActivityTab({ sprintId }: { sprintId: string }) {
@@ -197,15 +221,13 @@ function SprintOverviewContent({ sprint }: { sprint: SprintDetail }) {
         <SprintPlanningBoard sprintId={sprint.id} />
       ) : null}
       {sprint.status === "active" || sprint.status === "planning" ? (
-        <CapacityPlanningCard
+        <CapacityPlanningSection
+          sprintId={sprint.id}
+          projectId={sprint.projectId}
           members={sprint.capacity}
           capacityPoints={sprint.metrics.capacityPoints}
           allocatedPoints={sprint.metrics.committedPoints}
         />
-      ) : null}
-      {sprint.review ? <SprintReviewCard review={sprint.review} /> : null}
-      {sprint.retrospective ? (
-        <SprintRetrospective retrospective={sprint.retrospective} />
       ) : null}
     </div>
   );

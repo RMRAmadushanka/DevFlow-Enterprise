@@ -40,7 +40,10 @@ function CompleteSprintModal({ sprint, open, onOpenChange }: CompleteSprintModal
         form.setError("confirmation", { message: 'Type "COMPLETE" to confirm' });
         return;
       }
-      await complete.mutateAsync(sprint.id);
+      await complete.mutateAsync({
+        id: sprint.id,
+        moveIncompleteToBacklog: values.moveIncompleteToBacklog,
+      });
       onOpenChange(false);
     },
   });

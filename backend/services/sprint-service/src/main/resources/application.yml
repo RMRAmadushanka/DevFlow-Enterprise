@@ -73,6 +73,7 @@ devflow:
   clients:
     organization-service-url: ${ORGANIZATION_SERVICE_URL:http://localhost:8083}
     task-service-url: ${TASK_SERVICE_URL:http://localhost:8085}
+    user-service-url: ${USER_SERVICE_URL:http://localhost:8082}
   outbox:
     poll-interval-ms: 2000
     batch-size: 50

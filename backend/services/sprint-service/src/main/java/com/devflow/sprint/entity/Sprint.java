@@ -74,6 +74,12 @@ public class Sprint extends BaseEntity {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    @Column(name = "release_id")
+    private UUID releaseId;
+
+    @Column(name = "release_name", length = 160)
+    private String releaseName;
+
     @Version
     @Column(nullable = false)
     private long version;
@@ -116,6 +122,10 @@ public class Sprint extends BaseEntity {
     public void setArchived(boolean archived) { this.archived = archived; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public UUID getReleaseId() { return releaseId; }
+    public void setReleaseId(UUID releaseId) { this.releaseId = releaseId; }
+    public String getReleaseName() { return releaseName; }
+    public void setReleaseName(String releaseName) { this.releaseName = releaseName; }
     public long getVersion() { return version; }
     public void setVersion(long version) { this.version = version; }
 }

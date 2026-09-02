@@ -5,6 +5,9 @@ import type {
   SprintDetail,
   SprintFilters,
   SprintHealth,
+  SprintMemberCapacity,
+  SprintReview,
+  SprintRetrospective,
   SprintSortField,
   SprintStatus,
   BurndownPoint,
@@ -14,9 +17,12 @@ import type {
   BacklogItemDto,
   BurndownPointDto,
   PlanningStateDto,
+  RetrospectiveDto,
   SprintActivityDto,
+  SprintCapacityDto,
   SprintDto,
   SprintListQuery,
+  SprintReviewDto,
   VelocityPointDto,
 } from "@/lib/api/types/sprint";
 
@@ -65,6 +71,8 @@ export function dtoToSprint(dto: SprintDto): Sprint {
     completedTaskCount: dto.completedTaskCount ?? 0,
     velocity: dto.velocity ?? 0,
     health: toUiHealth(dto.health),
+    releaseId: dto.releaseId ?? undefined,
+    releaseName: dto.releaseName ?? undefined,
     archived: Boolean(dto.archived),
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
@@ -129,6 +137,59 @@ export function dtoToSprintActivity(dto: SprintActivityDto): SprintDetail["activ
   };
 }
 
+const RETRO_COLUMN_MAP: Record<string, keyof Omit<SprintRetrospective, "comments">> = {
+  WENT_WELL: "wentWell",
+  NEEDS_IMPROVEMENT: "needsImprovement",
+  ACTION_ITEM: "actionItems",
+};
+
+export function dtoToRetrospective(dto: RetrospectiveDto): SprintRetrospective {
+  const retro: SprintRetrospective = {
+    wentWell: [],
+    needsImprovement: [],
+    actionItems: [],
+    comments: [],
+  };
+  for (const item of dto.items ?? []) {
+    const bucket = RETRO_COLUMN_MAP[item.columnType] ?? "wentWell";
+    retro[bucket].push({
+      id: item.id,
+      text: item.text,
+      votes: item.voteCount ?? 0,
+      authorName: item.authorName ?? "Unknown",
+      votedByCurrentUser: Boolean(item.votedByCurrentUser),
+    });
+  }
+  retro.comments = (dto.comments ?? []).map((comment) => ({
+    id: comment.id,
+    authorName: comment.authorName ?? "Unknown",
+    body: comment.text,
+    timestamp: comment.createdAt,
+  }));
+  return retro;
+}
+
+export function dtoToSprintReview(dto: SprintReviewDto): SprintReview {
+  return {
+    velocity: dto.velocity ?? 0,
+    completedPoints: dto.completedPoints ?? 0,
+    incompleteCount: dto.incompleteCount ?? 0,
+    deploymentSummary: dto.deploymentSummary ?? "",
+    teamPerformance: dto.teamPerformance ?? "",
+  };
+}
+
+export function dtoToCapacity(dto: SprintCapacityDto): SprintMemberCapacity[] {
+  return (dto.members ?? []).map((member) => ({
+    userId: member.userId,
+    name: member.userName,
+    capacityPoints: member.capacityPoints ?? 0,
+    allocatedPoints: member.allocatedPoints ?? 0,
+    // Per-member availability (e.g. PTO) isn't part of the capacity contract yet.
+    availability: 100,
+  }));
+}
+
 export function dtoToPlanningState(dto: PlanningStateDto): PlanningState {
   return {
     backlog: dto.backlog.map(dtoToBacklogItem),
@@ -138,7 +199,17 @@ export function dtoToPlanningState(dto: PlanningStateDto): PlanningState {
   };
 }
 
-export function dtoToSprintDetail(dto: SprintDto, burndown: BurndownPointDto[] = []): SprintDetail {
+export interface SprintDetailExtras {
+  retrospective?: RetrospectiveDto;
+  review?: SprintReviewDto;
+  capacity?: SprintCapacityDto;
+}
+
+export function dtoToSprintDetail(
+  dto: SprintDto,
+  burndown: BurndownPointDto[] = [],
+  extras: SprintDetailExtras = {}
+): SprintDetail {
   const sprint = dtoToSprint(dto);
   const progress =
     sprint.committedPoints > 0
@@ -161,8 +232,7 @@ export function dtoToSprintDetail(dto: SprintDto, burndown: BurndownPointDto[] =
     },
     burndown: burndown.map(dtoToBurndownPoint),
     burnup: burndownToBurnupPoints(burndown),
-    // No backend data source for per-member capacity yet — out of scope for this pass.
-    capacity: [],
+    capacity: extras.capacity ? dtoToCapacity(extras.capacity) : [],
     taskIds: [],
     activity: [
       {
@@ -172,6 +242,8 @@ export function dtoToSprintDetail(dto: SprintDto, burndown: BurndownPointDto[] =
         timestamp: sprint.createdAt,
       },
     ],
+    review: extras.review ? dtoToSprintReview(extras.review) : undefined,
+    retrospective: extras.retrospective ? dtoToRetrospective(extras.retrospective) : undefined,
   };
 }
 

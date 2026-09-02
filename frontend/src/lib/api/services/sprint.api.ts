@@ -2,14 +2,24 @@ import { apiClient } from "../client";
 import type {
   BacklogItemDto,
   BurndownPointDto,
+  CompleteSprintRequest,
+  CreateRetroCommentRequest,
+  CreateRetroItemRequest,
   CreateSprintRequest,
   MoveTasksToSprintRequest,
   PlanningStateDto,
+  ReorderBacklogRequest,
+  RetroItemDto,
+  RetrospectiveDto,
   SprintActivityDto,
+  SprintCapacityDto,
   SprintDto,
   SprintListQuery,
   SprintPage,
+  SprintReviewDto,
   SprintStatusUpdateRequest,
+  UpdateCapacityRequest,
+  UpdateReviewRequest,
   UpdateSprintRequest,
   VelocityPointDto,
 } from "../types/sprint";
@@ -63,8 +73,11 @@ export const sprintApi = {
     return apiClient<SprintDto>(`/api/sprints/${sprintId}/start`, { method: "POST" });
   },
 
-  completeSprint(sprintId: string): Promise<SprintDto> {
-    return apiClient<SprintDto>(`/api/sprints/${sprintId}/complete`, { method: "POST" });
+  completeSprint(sprintId: string, body?: CompleteSprintRequest): Promise<SprintDto> {
+    return apiClient<SprintDto>(`/api/sprints/${sprintId}/complete`, {
+      method: "POST",
+      body,
+    });
   },
 
   archiveSprint(sprintId: string): Promise<SprintDto> {
@@ -103,6 +116,60 @@ export const sprintApi = {
   getActivity(sprintId: string, limit?: number): Promise<SprintActivityDto[]> {
     return apiClient<SprintActivityDto[]>(`/api/sprints/${sprintId}/activity`, {
       query: { limit },
+    });
+  },
+
+  getRetrospective(sprintId: string): Promise<RetrospectiveDto> {
+    return apiClient<RetrospectiveDto>(`/api/sprints/${sprintId}/retrospective`);
+  },
+
+  createRetroItem(sprintId: string, body: CreateRetroItemRequest): Promise<RetroItemDto> {
+    return apiClient<RetroItemDto>(`/api/sprints/${sprintId}/retrospective/items`, {
+      method: "POST",
+      body,
+    });
+  },
+
+  voteRetroItem(sprintId: string, itemId: string): Promise<RetroItemDto> {
+    return apiClient<RetroItemDto>(
+      `/api/sprints/${sprintId}/retrospective/items/${itemId}/vote`,
+      { method: "POST" }
+    );
+  },
+
+  postRetroComment(sprintId: string, body: CreateRetroCommentRequest) {
+    return apiClient(`/api/sprints/${sprintId}/retrospective/comments`, {
+      method: "POST",
+      body,
+    });
+  },
+
+  getReview(sprintId: string): Promise<SprintReviewDto> {
+    return apiClient<SprintReviewDto>(`/api/sprints/${sprintId}/review`);
+  },
+
+  updateReview(sprintId: string, body: UpdateReviewRequest): Promise<SprintReviewDto> {
+    return apiClient<SprintReviewDto>(`/api/sprints/${sprintId}/review`, {
+      method: "PUT",
+      body,
+    });
+  },
+
+  getCapacity(sprintId: string): Promise<SprintCapacityDto> {
+    return apiClient<SprintCapacityDto>(`/api/sprints/${sprintId}/capacity`);
+  },
+
+  updateCapacity(sprintId: string, body: UpdateCapacityRequest): Promise<SprintCapacityDto> {
+    return apiClient<SprintCapacityDto>(`/api/sprints/${sprintId}/capacity`, {
+      method: "PUT",
+      body,
+    });
+  },
+
+  reorderBacklog(body: ReorderBacklogRequest): Promise<BacklogItemDto[]> {
+    return apiClient<BacklogItemDto[]>("/api/sprints/backlog/reorder", {
+      method: "POST",
+      body,
     });
   },
 };

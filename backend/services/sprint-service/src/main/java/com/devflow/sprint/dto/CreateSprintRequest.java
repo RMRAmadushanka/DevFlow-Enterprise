@@ -19,6 +19,7 @@ public record CreateSprintRequest(
         @NotNull LocalDate startDate,
         @NotNull LocalDate endDate,
         @Min(0) @Max(1000) int capacityPoints,
-        @Min(0) @Max(1000) int storyPointGoal
+        @Min(0) @Max(1000) int storyPointGoal,
+        UUID releaseId
 ) {
 }

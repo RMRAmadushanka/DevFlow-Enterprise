@@ -19,6 +19,7 @@ public record UpdateSprintRequest(
         @Min(0) @Max(1000) Integer capacityPoints,
         @Min(0) @Max(1000) Integer storyPointGoal,
         String status,
-        Boolean archived
+        Boolean archived,
+        UUID releaseId
 ) {
 }

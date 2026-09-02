@@ -49,7 +49,7 @@ spring:
         - id: sprint-service
           uri: http://sprint-service:8086
           predicates:
-            - Path=/api/sprints/**,/api/v1/sprint/**
+            - Path=/api/sprints/**,/api/v1/sprint/**,/api/releases/**
         - id: document-service
           uri: http://document-service:8087
           predicates:

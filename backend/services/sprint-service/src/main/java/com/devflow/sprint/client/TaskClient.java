@@ -5,10 +5,13 @@ import com.devflow.common.dto.PageResponse;
 import com.devflow.sprint.dto.TaskSprintSummaryResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,4 +42,20 @@ public interface TaskClient {
             @RequestParam(value = "sprintId", required = false) UUID sprintId,
             @RequestParam(value = "unassigned", required = false) Boolean unassigned
     );
+
+    /** Live per-assignee allocated story points for a sprint, used by the capacity planning board. */
+    @GetMapping("/api/tasks/sprint-allocation")
+    ApiResponse<List<AssigneeAllocationResponse>> getSprintAllocation(@RequestParam("sprintId") UUID sprintId);
+
+    /**
+     * Best-effort call made after a sprint is completed with {@code moveIncompleteToBacklog=true}:
+     * releases this sprint's incomplete tasks back to the project backlog (clears their sprint
+     * assignment on task-service's side).
+     */
+    @PostMapping("/api/tasks/sprint/{sprintId}/release-incomplete")
+    ApiResponse<ReleaseIncompleteResponse> releaseIncomplete(@PathVariable("sprintId") UUID sprintId);
+
+    /** Persists the backlog's manual ordering for a project. */
+    @PatchMapping("/api/tasks/backlog-order")
+    ApiResponse<BacklogReorderResponse> reorderBacklog(@RequestBody BacklogReorderRequest request);
 }

@@ -4,14 +4,19 @@ import com.devflow.common.api.ApiResponse;
 import com.devflow.common.dto.PageResponse;
 import com.devflow.sprint.dto.BacklogItemResponse;
 import com.devflow.sprint.dto.BurndownPointResponse;
+import com.devflow.sprint.dto.CapacityResponse;
+import com.devflow.sprint.dto.CompleteSprintRequest;
 import com.devflow.sprint.dto.CreateSprintRequest;
 import com.devflow.sprint.dto.MoveTasksRequest;
 import com.devflow.sprint.dto.PlanningStateResponse;
+import com.devflow.sprint.dto.ReorderBacklogRequest;
+import com.devflow.sprint.dto.SetCapacityRequest;
 import com.devflow.sprint.dto.SprintResponse;
 import com.devflow.sprint.dto.SprintActivityResponse;
 import com.devflow.sprint.dto.SprintStatusUpdateRequest;
 import com.devflow.sprint.dto.UpdateSprintRequest;
 import com.devflow.sprint.dto.VelocityPointResponse;
+import com.devflow.sprint.service.CapacityService;
 import com.devflow.sprint.service.SprintActivityService;
 import com.devflow.sprint.service.SprintBurndownService;
 import com.devflow.sprint.service.SprintPlanningService;
@@ -27,6 +32,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -48,17 +54,20 @@ public class SprintController {
     private final SprintBurndownService burndownService;
     private final SprintPlanningService planningService;
     private final SprintActivityService activityService;
+    private final CapacityService capacityService;
 
     public SprintController(
             SprintService sprintService,
             SprintBurndownService burndownService,
             SprintPlanningService planningService,
-            SprintActivityService activityService
+            SprintActivityService activityService,
+            CapacityService capacityService
     ) {
         this.sprintService = sprintService;
         this.burndownService = burndownService;
         this.planningService = planningService;
         this.activityService = activityService;
+        this.capacityService = capacityService;
     }
 
     @PostMapping
@@ -116,9 +125,16 @@ public class SprintController {
     }
 
     @PostMapping("/{sprintId}/complete")
-    @Operation(summary = "Complete sprint", description = "ACTIVE -> COMPLETED. Requires sprint.complete.")
-    public ApiResponse<SprintResponse> complete(@PathVariable UUID sprintId) {
-        return ApiResponse.ok(sprintService.complete(sprintId));
+    @Operation(summary = "Complete sprint",
+            description = "ACTIVE -> COMPLETED. Requires sprint.complete. Optional body {moveIncompleteToBacklog}: "
+                    + "when true, best-effort releases this sprint's incomplete tasks back to the project backlog "
+                    + "(a missing body or missing/null field defaults to false).")
+    public ApiResponse<SprintResponse> complete(
+            @PathVariable UUID sprintId,
+            @RequestBody(required = false) CompleteSprintRequest request
+    ) {
+        boolean moveIncompleteToBacklog = request != null && Boolean.TRUE.equals(request.moveIncompleteToBacklog());
+        return ApiResponse.ok(sprintService.complete(sprintId, moveIncompleteToBacklog));
     }
 
     @PatchMapping("/{sprintId}/archive")
@@ -185,5 +201,29 @@ public class SprintController {
             @RequestParam(required = false) Integer limit
     ) {
         return ApiResponse.ok(activityService.list(sprintId, limit));
+    }
+
+    @GetMapping("/{sprintId}/capacity")
+    @Operation(summary = "Get capacity vs. live allocation",
+            description = "Merges persisted per-member capacity with task-service's live per-assignee allocation for this sprint.")
+    public ApiResponse<CapacityResponse> getCapacity(@PathVariable UUID sprintId) {
+        return ApiResponse.ok(capacityService.get(sprintId));
+    }
+
+    @PutMapping("/{sprintId}/capacity")
+    @Operation(summary = "Set per-member capacity", description = "Upserts each member's capacity. Requires sprint.manage_backlog.")
+    public ApiResponse<CapacityResponse> setCapacity(
+            @PathVariable UUID sprintId,
+            @Valid @RequestBody SetCapacityRequest request
+    ) {
+        return ApiResponse.ok(capacityService.set(sprintId, request));
+    }
+
+    @PostMapping("/backlog/reorder")
+    @Operation(summary = "Reorder the project backlog",
+            description = "Not scoped to one sprint (matches GET /backlog's project-only scoping); persists the manual "
+                    + "ordering via task-service and returns the backlog in its new order.")
+    public ApiResponse<List<BacklogItemResponse>> reorderBacklog(@Valid @RequestBody ReorderBacklogRequest request) {
+        return ApiResponse.ok(planningService.reorderBacklog(request.projectId(), request.orderedTaskIds()));
     }
 }

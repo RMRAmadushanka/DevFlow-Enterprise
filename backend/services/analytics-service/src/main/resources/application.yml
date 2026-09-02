@@ -48,6 +48,11 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8280/realms/devflow}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8280/realms/devflow/protocol/openid-connect/certs}
 
+devflow:
+  clients:
+    organization-service-url: ${ORGANIZATION_SERVICE_URL:http://localhost:8083}
+    user-service-url: ${USER_SERVICE_URL:http://localhost:8082}
+
 server:
   port: 8091
 

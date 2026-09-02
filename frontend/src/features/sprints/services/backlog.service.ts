@@ -110,11 +110,13 @@ const backlogApiService = {
     return this.list(projectId);
   },
 
-  async reorder(projectId: string, _orderedIds: string[]): Promise<BacklogItem[]> {
-    // Ordering isn't persisted server-side (no rank/order column on Task yet) — this
-    // is a known/accepted limitation for this pass. Client-only no-op: return the
-    // current list unchanged.
-    return this.list(projectId);
+  async reorder(projectId: string, orderedIds: string[]): Promise<BacklogItem[]> {
+    // The reorder endpoint returns the full re-fetched ordered backlog — use it
+    // directly instead of issuing a second GET.
+    const dtos = await call(() =>
+      sprintApi.reorderBacklog({ projectId, orderedTaskIds: orderedIds })
+    );
+    return dtos.map(dtoToBacklogItem);
   },
 };
 

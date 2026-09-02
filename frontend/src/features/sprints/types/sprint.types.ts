@@ -10,7 +10,7 @@ export type SprintSortField =
   | "velocity"
   | "completion";
 
-export type ReleaseStatus = "planned" | "in_progress" | "released" | "cancelled";
+export type ReleaseStatus = "planned" | "in_progress" | "released" | "delayed";
 
 export interface SprintFilters {
   q: string;
@@ -103,9 +103,9 @@ export interface SprintDetail extends Sprint {
 }
 
 export interface SprintReview {
-  completedTaskIds: string[];
-  incompleteTaskIds: string[];
   velocity: number;
+  completedPoints: number;
+  incompleteCount: number;
   deploymentSummary: string;
   teamPerformance: string;
 }
@@ -115,6 +115,7 @@ export interface RetroItem {
   text: string;
   votes: number;
   authorName: string;
+  votedByCurrentUser?: boolean;
 }
 
 export interface SprintRetrospective {
@@ -150,6 +151,18 @@ export interface Release {
   description: string;
 }
 
+export interface CreateReleasePayload {
+  projectId: string;
+  name: string;
+  version?: string;
+  description?: string;
+  status: ReleaseStatus;
+  releaseDate?: string;
+  features?: string[];
+}
+
+export type UpdateReleasePayload = Partial<Omit<CreateReleasePayload, "projectId">>;
+
 export interface CreateSprintPayload {
   name: string;
   goal: string;
@@ -159,6 +172,7 @@ export interface CreateSprintPayload {
   endDate: string;
   capacityPoints: number;
   storyPointGoal: number;
+  releaseId?: string | null;
 }
 
 export type UpdateSprintPayload = Partial<CreateSprintPayload> & {

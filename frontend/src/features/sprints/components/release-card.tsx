@@ -1,10 +1,12 @@
 "use client";
 
-import { Calendar, Package } from "lucide-react";
+import { Calendar, Package, Pencil } from "lucide-react";
 
 import { StatusBadge } from "@/components/data-display/badges";
 import type { Tone } from "@/components/data-display/shared/types";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PermissionGuard } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 import type { Release, ReleaseStatus } from "../types/sprint.types";
@@ -13,22 +15,23 @@ const RELEASE_TONE: Record<ReleaseStatus, Tone> = {
   planned: "info",
   in_progress: "warning",
   released: "success",
-  cancelled: "neutral",
+  delayed: "danger",
 };
 
 const RELEASE_LABELS: Record<ReleaseStatus, string> = {
   planned: "Planned",
   in_progress: "In progress",
   released: "Released",
-  cancelled: "Cancelled",
+  delayed: "Delayed",
 };
 
 export interface ReleaseCardProps {
   release: Release;
   className?: string;
+  onEdit?: (release: Release) => void;
 }
 
-function ReleaseCard({ release, className }: ReleaseCardProps) {
+function ReleaseCard({ release, className, onEdit }: ReleaseCardProps) {
   return (
     <Card
       data-slot="release-card"
@@ -39,12 +42,31 @@ function ReleaseCard({ release, className }: ReleaseCardProps) {
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-foreground">{release.name}</h3>
             <p className="text-sm text-muted-foreground">
-              {release.version.startsWith("v") ? release.version : `v${release.version}`}
+              {release.version
+                ? release.version.startsWith("v")
+                  ? release.version
+                  : `v${release.version}`
+                : "No version"}
             </p>
           </div>
-          <StatusBadge tone={RELEASE_TONE[release.status]} dot size="sm">
-            {RELEASE_LABELS[release.status]}
-          </StatusBadge>
+          <div className="flex shrink-0 items-center gap-1">
+            <StatusBadge tone={RELEASE_TONE[release.status]} dot size="sm">
+              {RELEASE_LABELS[release.status]}
+            </StatusBadge>
+            {onEdit ? (
+              <PermissionGuard permission="sprint.update">
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={`Edit ${release.name}`}
+                  onClick={() => onEdit(release)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              </PermissionGuard>
+            ) : null}
+          </div>
         </div>
 
         {release.description ? (

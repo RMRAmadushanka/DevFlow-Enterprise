@@ -10,9 +10,10 @@ export interface ReleaseTimelineProps {
   releases: Release[];
   layout?: "list" | "timeline";
   className?: string;
+  onEdit?: (release: Release) => void;
 }
 
-function ReleaseTimeline({ releases, layout = "timeline", className }: ReleaseTimelineProps) {
+function ReleaseTimeline({ releases, layout = "timeline", className, onEdit }: ReleaseTimelineProps) {
   if (releases.length === 0) {
     return <SprintEmptyState variant="no-releases" />;
   }
@@ -21,7 +22,7 @@ function ReleaseTimeline({ releases, layout = "timeline", className }: ReleaseTi
     return (
       <div className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-3", className)}>
         {releases.map((release) => (
-          <ReleaseCard key={release.id} release={release} />
+          <ReleaseCard key={release.id} release={release} onEdit={onEdit} />
         ))}
       </div>
     );
@@ -42,7 +43,7 @@ function ReleaseTimeline({ releases, layout = "timeline", className }: ReleaseTi
             aria-hidden
           />
           <div className="min-w-0 flex-1">
-            <ReleaseCard release={release} />
+            <ReleaseCard release={release} onEdit={onEdit} />
           </div>
         </li>
       ))}

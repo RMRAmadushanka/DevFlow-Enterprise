@@ -18,5 +18,14 @@ export {
 } from "./interceptors/unauthorized";
 export { createQueryKeys } from "./query-keys";
 export type { QueryKeyFactory } from "./query-keys";
-export { authApi, userApi, organizationApi, projectApi, taskApi, sprintApi } from "./services";
+export {
+  authApi,
+  userApi,
+  organizationApi,
+  projectApi,
+  taskApi,
+  sprintApi,
+  releaseApi,
+  analyticsApi,
+} from "./services";
 export type * from "./types";

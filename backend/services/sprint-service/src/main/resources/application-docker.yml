@@ -20,4 +20,5 @@ devflow:
   clients:
     organization-service-url: ${ORGANIZATION_SERVICE_URL:http://organization-service:8083}
     task-service-url: ${TASK_SERVICE_URL:http://task-service:8085}
+    user-service-url: ${USER_SERVICE_URL:http://user-service:8082}
 

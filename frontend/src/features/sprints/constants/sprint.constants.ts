@@ -11,7 +11,12 @@ export const sprintKeys = {
     [...createQueryKeys("sprints").all, "backlog", projectId] as const,
   releases: (projectId?: string | null) =>
     [...createQueryKeys("sprints").all, "releases", projectId ?? "all"] as const,
+  release: (id: string) => [...createQueryKeys("sprints").all, "releases", "detail", id] as const,
   reports: (id: string) => [...createQueryKeys("sprints").detail(id), "reports"] as const,
+  retrospective: (id: string) =>
+    [...createQueryKeys("sprints").detail(id), "retrospective"] as const,
+  review: (id: string) => [...createQueryKeys("sprints").detail(id), "review"] as const,
+  capacity: (id: string) => [...createQueryKeys("sprints").detail(id), "capacity"] as const,
 };
 
 export const DEFAULT_SPRINT_FILTERS: SprintFilters = {
@@ -58,6 +63,7 @@ export const SPRINT_DETAIL_TABS = [
   { value: "overview", label: "Overview" },
   { value: "board", label: "Board" },
   { value: "reports", label: "Reports" },
+  { value: "retrospective", label: "Retrospective" },
   { value: "members", label: "Members" },
   { value: "activity", label: "Activity" },
   { value: "settings", label: "Settings" },

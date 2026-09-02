@@ -1,32 +1,53 @@
 "use client";
 
 import * as React from "react";
-import { MessageSquare, ThumbsUp } from "lucide-react";
+import { MessageSquare, Plus, ThumbsUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TextInput } from "@/components/forms/input";
 import { TextareaField } from "@/components/forms/textarea";
 import { cn } from "@/lib/utils";
 
+import {
+  useCreateRetroItem,
+  usePostRetroComment,
+  useVoteRetroItem,
+} from "../hooks/use-sprints";
 import type { RetroItem, SprintRetrospective as SprintRetrospectiveData } from "../types/sprint.types";
 
 export interface SprintRetrospectiveProps {
   retrospective: SprintRetrospectiveData;
+  sprintId: string;
   className?: string;
 }
 
-function RetroColumn({
+type RetroColumn = "wentWell" | "needsImprovement" | "actionItems";
+
+const COLUMN_TO_API: Record<RetroColumn, "WENT_WELL" | "NEEDS_IMPROVEMENT" | "ACTION_ITEM"> = {
+  wentWell: "WENT_WELL",
+  needsImprovement: "NEEDS_IMPROVEMENT",
+  actionItems: "ACTION_ITEM",
+};
+
+function RetroColumnView({
   title,
   items,
   onVote,
+  onAdd,
+  adding,
 }: {
   title: string;
   items: RetroItem[];
   onVote?: (id: string) => void;
+  onAdd?: (text: string) => void;
+  adding?: boolean;
 }) {
+  const [draft, setDraft] = React.useState("");
+
   return (
     <div className="flex flex-col gap-2">
-      <h4 className="text-sm font-semibold">{title}</h4>
+      {title ? <h4 className="text-sm font-semibold">{title}</h4> : null}
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No items yet.</p>
       ) : (
@@ -44,7 +65,7 @@ function RetroColumn({
                 <Button
                   type="button"
                   size="sm"
-                  variant="ghost"
+                  variant={item.votedByCurrentUser ? "secondary" : "ghost"}
                   className="shrink-0 tabular-nums"
                   onClick={() => onVote(item.id)}
                 >
@@ -60,25 +81,52 @@ function RetroColumn({
           ))}
         </ul>
       )}
+      {onAdd ? (
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const trimmed = draft.trim();
+            if (!trimmed) return;
+            onAdd(trimmed);
+            setDraft("");
+          }}
+        >
+          <TextInput
+            value={draft}
+            onChange={setDraft}
+            placeholder="Add an item…"
+            className="flex-1"
+          />
+          <Button type="submit" size="icon-sm" variant="outline" disabled={!draft.trim() || adding}>
+            <Plus className="size-3.5" />
+          </Button>
+        </form>
+      ) : null}
     </div>
   );
 }
 
-function SprintRetrospective({ retrospective, className }: SprintRetrospectiveProps) {
+function SprintRetrospective({ retrospective, sprintId, className }: SprintRetrospectiveProps) {
   const [comment, setComment] = React.useState("");
-  const [localRetro, setLocalRetro] = React.useState(retrospective);
+  const createItem = useCreateRetroItem(sprintId);
+  const voteItem = useVoteRetroItem(sprintId);
+  const postComment = usePostRetroComment(sprintId);
 
-  React.useEffect(() => {
-    setLocalRetro(retrospective);
-  }, [retrospective]);
+  function handleAdd(column: RetroColumn, text: string) {
+    void createItem.mutateAsync({ columnType: COLUMN_TO_API[column], text });
+  }
 
-  function handleVote(column: "wentWell" | "needsImprovement" | "actionItems", id: string) {
-    setLocalRetro((prev) => ({
-      ...prev,
-      [column]: prev[column].map((item) =>
-        item.id === id ? { ...item, votes: item.votes + 1 } : item
-      ),
-    }));
+  function handleVote(id: string) {
+    void voteItem.mutateAsync(id);
+  }
+
+  function handlePostComment() {
+    const trimmed = comment.trim();
+    if (!trimmed) return;
+    postComment.mutate(trimmed, {
+      onSuccess: () => setComment(""),
+    });
   }
 
   return (
@@ -89,10 +137,12 @@ function SprintRetrospective({ retrospective, className }: SprintRetrospectivePr
             <CardTitle className="text-base">Went well</CardTitle>
           </CardHeader>
           <CardContent>
-            <RetroColumn
+            <RetroColumnView
               title=""
-              items={localRetro.wentWell}
-              onVote={(id) => handleVote("wentWell", id)}
+              items={retrospective.wentWell}
+              onVote={handleVote}
+              onAdd={(text) => handleAdd("wentWell", text)}
+              adding={createItem.isPending}
             />
           </CardContent>
         </Card>
@@ -101,10 +151,12 @@ function SprintRetrospective({ retrospective, className }: SprintRetrospectivePr
             <CardTitle className="text-base">Needs improvement</CardTitle>
           </CardHeader>
           <CardContent>
-            <RetroColumn
+            <RetroColumnView
               title=""
-              items={localRetro.needsImprovement}
-              onVote={(id) => handleVote("needsImprovement", id)}
+              items={retrospective.needsImprovement}
+              onVote={handleVote}
+              onAdd={(text) => handleAdd("needsImprovement", text)}
+              adding={createItem.isPending}
             />
           </CardContent>
         </Card>
@@ -113,10 +165,12 @@ function SprintRetrospective({ retrospective, className }: SprintRetrospectivePr
             <CardTitle className="text-base">Action items</CardTitle>
           </CardHeader>
           <CardContent>
-            <RetroColumn
+            <RetroColumnView
               title=""
-              items={localRetro.actionItems}
-              onVote={(id) => handleVote("actionItems", id)}
+              items={retrospective.actionItems}
+              onVote={handleVote}
+              onAdd={(text) => handleAdd("actionItems", text)}
+              adding={createItem.isPending}
             />
           </CardContent>
         </Card>
@@ -130,11 +184,11 @@ function SprintRetrospective({ retrospective, className }: SprintRetrospectivePr
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {localRetro.comments.length === 0 ? (
+          {retrospective.comments.length === 0 ? (
             <p className="text-sm text-muted-foreground">No comments yet.</p>
           ) : (
             <ul className="flex flex-col gap-3">
-              {localRetro.comments.map((entry) => (
+              {retrospective.comments.map((entry) => (
                 <li key={entry.id} className="rounded-md border border-border px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{entry.authorName}</span>
@@ -152,8 +206,13 @@ function SprintRetrospective({ retrospective, className }: SprintRetrospectivePr
             placeholder="Share feedback with the team…"
             rows={3}
           />
-          <Button type="button" size="sm" disabled={!comment.trim()}>
-            Post comment
+          <Button
+            type="button"
+            size="sm"
+            disabled={!comment.trim() || postComment.isPending}
+            onClick={handlePostComment}
+          >
+            {postComment.isPending ? "Posting…" : "Post comment"}
           </Button>
         </CardContent>
       </Card>

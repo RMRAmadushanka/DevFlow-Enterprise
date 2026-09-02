@@ -12,6 +12,9 @@ import type {
   SprintDetail,
   SprintFilters,
   SprintListResult,
+  SprintMemberCapacity,
+  SprintReview,
+  SprintRetrospective,
   SprintSortField,
   UpdateSprintPayload,
   VelocityPoint,
@@ -21,14 +24,19 @@ import {
   SprintValidationError,
 } from "../utils/errors";
 import {
+  dtoToCapacity,
   dtoToPlanningState,
+  dtoToRetrospective,
   dtoToSprint,
   dtoToSprintActivity,
   dtoToSprintDetail,
+  dtoToSprintReview,
   dtoToVelocityPoint,
   filtersToQuery,
   isUuid,
+  type SprintDetailExtras,
 } from "./sprint-api.mappers";
+import type { RetroColumnType } from "@/lib/api/types/sprint";
 
 function mapError(error: unknown): never {
   if (isApiError(error)) {
@@ -92,12 +100,28 @@ export const sprintApiService = {
 
   async getById(id: string): Promise<SprintDetail> {
     const dto = await call(() => sprintApi.getSprint(id));
-    // Burndown is a secondary chart data source — don't let it fail the whole sprint load.
-    const burndown = await sprintApi.getBurndown(id).catch((error) => {
-      console.error("Failed to load sprint burndown", error);
-      return [];
-    });
-    return dtoToSprintDetail(dto, burndown);
+    // Burndown/retrospective/review/capacity are secondary data sources — don't let
+    // any one of them fail the whole sprint load.
+    const [burndown, retrospective, review, capacity] = await Promise.all([
+      sprintApi.getBurndown(id).catch((error) => {
+        console.error("Failed to load sprint burndown", error);
+        return [];
+      }),
+      sprintApi.getRetrospective(id).catch((error) => {
+        console.error("Failed to load sprint retrospective", error);
+        return undefined;
+      }),
+      sprintApi.getReview(id).catch((error) => {
+        console.error("Failed to load sprint review", error);
+        return undefined;
+      }),
+      sprintApi.getCapacity(id).catch((error) => {
+        console.error("Failed to load sprint capacity", error);
+        return undefined;
+      }),
+    ]);
+    const extras: SprintDetailExtras = { retrospective, review, capacity };
+    return dtoToSprintDetail(dto, burndown, extras);
   },
 
   async create(payload: CreateSprintPayload): Promise<SprintDetail> {
@@ -120,6 +144,7 @@ export const sprintApiService = {
         endDate: payload.endDate,
         capacityPoints: payload.capacityPoints,
         storyPointGoal: payload.storyPointGoal,
+        releaseId: payload.releaseId ?? null,
       })
     );
     return dtoToSprintDetail(dto);
@@ -148,6 +173,7 @@ export const sprintApiService = {
         storyPointGoal: payload.storyPointGoal,
         status: payload.status,
         archived: payload.archived,
+        releaseId: payload.releaseId,
       })
     );
     return dtoToSprintDetail(dto);
@@ -158,8 +184,13 @@ export const sprintApiService = {
     return dtoToSprintDetail(dto);
   },
 
-  async complete(id: string): Promise<SprintDetail> {
-    const dto = await call(() => sprintApi.completeSprint(id));
+  async complete(id: string, moveIncompleteToBacklog?: boolean): Promise<SprintDetail> {
+    const dto = await call(() =>
+      sprintApi.completeSprint(
+        id,
+        moveIncompleteToBacklog === undefined ? undefined : { moveIncompleteToBacklog }
+      )
+    );
     return dtoToSprintDetail(dto);
   },
 
@@ -209,5 +240,60 @@ export const sprintApiService = {
   async activity(sprintId: string): Promise<SprintDetail["activity"]> {
     const items = await call(() => sprintApi.getActivity(sprintId));
     return items.map(dtoToSprintActivity);
+  },
+
+  async getRetrospective(sprintId: string): Promise<SprintRetrospective> {
+    const dto = await call(() => sprintApi.getRetrospective(sprintId));
+    return dtoToRetrospective(dto);
+  },
+
+  async createRetroItem(
+    sprintId: string,
+    input: { columnType: RetroColumnType; text: string }
+  ): Promise<SprintRetrospective> {
+    if (!input.text?.trim()) {
+      throw new SprintValidationError("Retro item text is required");
+    }
+    await call(() => sprintApi.createRetroItem(sprintId, input));
+    return this.getRetrospective(sprintId);
+  },
+
+  async voteRetroItem(sprintId: string, itemId: string): Promise<SprintRetrospective> {
+    await call(() => sprintApi.voteRetroItem(sprintId, itemId));
+    return this.getRetrospective(sprintId);
+  },
+
+  async postRetroComment(sprintId: string, text: string): Promise<SprintRetrospective> {
+    if (!text?.trim()) {
+      throw new SprintValidationError("Comment text is required");
+    }
+    await call(() => sprintApi.postRetroComment(sprintId, { text }));
+    return this.getRetrospective(sprintId);
+  },
+
+  async getReview(sprintId: string): Promise<SprintReview> {
+    const dto = await call(() => sprintApi.getReview(sprintId));
+    return dtoToSprintReview(dto);
+  },
+
+  async updateReview(
+    sprintId: string,
+    payload: { deploymentSummary?: string; teamPerformance?: string }
+  ): Promise<SprintReview> {
+    const dto = await call(() => sprintApi.updateReview(sprintId, payload));
+    return dtoToSprintReview(dto);
+  },
+
+  async getCapacity(sprintId: string): Promise<SprintMemberCapacity[]> {
+    const dto = await call(() => sprintApi.getCapacity(sprintId));
+    return dtoToCapacity(dto);
+  },
+
+  async updateCapacity(
+    sprintId: string,
+    members: Array<{ userId: string; userName: string; capacityPoints: number }>
+  ): Promise<SprintMemberCapacity[]> {
+    const dto = await call(() => sprintApi.updateCapacity(sprintId, { members }));
+    return dtoToCapacity(dto);
   },
 };

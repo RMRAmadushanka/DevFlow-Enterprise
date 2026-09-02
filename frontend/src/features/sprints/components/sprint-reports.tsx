@@ -3,11 +3,12 @@
 import * as React from "react";
 
 import type { SprintDetail } from "../types/sprint.types";
-import { CapacityPlanningCard } from "./capacity-planning-card";
+import { CapacityPlanningSection } from "./capacity-planning-card";
 import { SprintBurnupChart } from "./sprint-burnup-chart";
 import { SprintBurndownChart } from "./sprint-burndown-chart";
 import { SprintEmptyState } from "./sprint-empty-state";
 import { ReportSkeleton } from "./sprint-skeleton";
+import { SprintReviewSection } from "./sprint-review-card";
 import { SprintVelocityChart } from "./sprint-velocity-chart";
 
 export interface SprintReportsProps {
@@ -51,12 +52,17 @@ const SprintReports = React.memo(function SprintReports({
         <SprintBurndownChart data={sprint.burndown} />
         <SprintBurnupChart data={sprint.burnup} />
         <SprintVelocityChart data={velocity} />
-        <CapacityPlanningCard
+        <CapacityPlanningSection
+          sprintId={sprint.id}
+          projectId={sprint.projectId}
           members={sprint.capacity}
           capacityPoints={sprint.metrics.capacityPoints}
           allocatedPoints={sprint.metrics.committedPoints}
         />
       </div>
+      {sprint.status === "active" || sprint.status === "completed" ? (
+        <SprintReviewSection sprintId={sprint.id} className="mt-4" />
+      ) : null}
     </div>
   );
 });

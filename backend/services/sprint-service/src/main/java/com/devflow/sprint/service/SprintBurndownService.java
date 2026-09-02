@@ -4,6 +4,8 @@ import com.devflow.sprint.dto.BurndownPointResponse;
 import com.devflow.sprint.entity.Sprint;
 import com.devflow.sprint.entity.SprintBurndownSnapshot;
 import com.devflow.sprint.entity.SprintStatus;
+import com.devflow.sprint.events.SprintEventPublisher;
+import com.devflow.sprint.events.SprintEventType;
 import com.devflow.sprint.repository.SprintBurndownSnapshotRepository;
 import com.devflow.sprint.repository.SprintRepository;
 import org.slf4j.Logger;
@@ -15,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -29,13 +33,16 @@ public class SprintBurndownService {
 
     private final SprintRepository sprintRepository;
     private final SprintBurndownSnapshotRepository snapshotRepository;
+    private final SprintEventPublisher eventPublisher;
 
     public SprintBurndownService(
             SprintRepository sprintRepository,
-            SprintBurndownSnapshotRepository snapshotRepository
+            SprintBurndownSnapshotRepository snapshotRepository,
+            SprintEventPublisher eventPublisher
     ) {
         this.sprintRepository = sprintRepository;
         this.snapshotRepository = snapshotRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Scheduled(cron = "0 5 0 * * *")
@@ -70,6 +77,16 @@ public class SprintBurndownService {
         snapshot.setCompletedPoints(sprint.getCompletedPoints());
         snapshot.setIdealPoints(ideal);
         snapshotRepository.save(snapshot);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sprintId", sprint.getId().toString());
+        payload.put("projectId", sprint.getProjectId() != null ? sprint.getProjectId().toString() : null);
+        payload.put("organizationId", sprint.getOrganizationId() != null ? sprint.getOrganizationId().toString() : null);
+        payload.put("snapshotDate", date.toString());
+        payload.put("remainingPoints", remaining);
+        payload.put("idealPoints", ideal);
+        payload.put("completedPoints", sprint.getCompletedPoints());
+        eventPublisher.publish(SprintEventType.BURNDOWN_SNAPSHOT_RECORDED, sprint.getId().toString(), payload);
     }
 
     @Transactional(readOnly = true)

@@ -28,6 +28,11 @@ public class KafkaTopicsConfig {
     }
 
     @Bean
+    NewTopic sprintEventsTopic() {
+        return TopicBuilder.name(KafkaTopics.SPRINT_EVENTS).partitions(3).replicas(1).build();
+    }
+
+    @Bean
     NewTopic notificationEventsTopic() {
         return TopicBuilder.name(KafkaTopics.NOTIFICATION_EVENTS).partitions(3).replicas(1).build();
     }

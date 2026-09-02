@@ -1,6 +1,11 @@
+import { analyticsApi } from "@/lib/api";
+import { rejectStubMutation, resolveLiveApiFlag } from "@/lib/api/live-api";
+import { useOrganizationStore } from "@/features/organization/store/organization.store";
+
 import type {
   AnalyticsOverview,
   CreateReportPayload,
+  MetricPoint,
   MonitoringFilters,
   ReportDefinition,
 } from "../types/monitoring.types";
@@ -8,6 +13,10 @@ import { makeSeries } from "../utils/format";
 import { MonitoringNotFoundError, MonitoringValidationError } from "../utils/errors";
 
 const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function isAnalyticsApiEnabled(): boolean {
+  return resolveLiveApiFlag(process.env.NEXT_PUBLIC_USE_ANALYTICS_API);
+}
 
 let reports: ReportDefinition[] = [
   {
@@ -43,7 +52,7 @@ let reports: ReportDefinition[] = [
   },
 ];
 
-export const analyticsService = {
+const mockAnalyticsService = {
   async getOverview(_filters: MonitoringFilters): Promise<AnalyticsOverview> {
     await delay();
     return {
@@ -94,3 +103,64 @@ export const analyticsService = {
     return { id, format };
   },
 };
+
+/** Live adapter — sourced from analytics-service (`/api/v1/analytics`). */
+const liveAnalyticsService = {
+  async getOverview(filters: MonitoringFilters): Promise<AnalyticsOverview> {
+    const organizationId = useOrganizationStore.getState().currentOrganizationId ?? undefined;
+    const projectId = filters.projectId ?? undefined;
+    const points = await analyticsApi
+      .getVelocityTrend(organizationId, projectId, 6)
+      .catch((error) => {
+        console.error("Failed to load velocity trend", error);
+        return [];
+      });
+    const velocityTrend: MetricPoint[] = points.map((point) => ({
+      label: point.sprintName,
+      value: point.completedPoints ?? 0,
+      secondary: point.committedPoints ?? 0,
+    }));
+
+    // Only velocity trend is sourced from analytics-service so far — the rest of
+    // this stub domain's metrics have no live backend yet, so they stay blank
+    // rather than showing stale mock numbers.
+    return {
+      engineeringVelocity: 0,
+      deploymentSuccessRate: 0,
+      openIncidents: 0,
+      projectSuccessRate: 0,
+      teamUtilization: 0,
+      platformHealth: "unknown",
+      sprintCompletion: 0,
+      repoActivity: 0,
+      errorTrend: [],
+      deploymentTrend: [],
+      velocityTrend,
+    };
+  },
+
+  async listReports(): Promise<ReportDefinition[]> {
+    return [];
+  },
+
+  async createReport(): Promise<ReportDefinition> {
+    rejectStubMutation("Custom analytics reports");
+  },
+
+  async exportReport(): Promise<{ id: string; format: string }> {
+    rejectStubMutation("Analytics report export");
+  },
+};
+
+export const analyticsService = new Proxy(mockAnalyticsService, {
+  get(target, prop, receiver) {
+    if (isAnalyticsApiEnabled()) {
+      const live = Reflect.get(liveAnalyticsService, prop, liveAnalyticsService);
+      if (typeof live === "function") {
+        return (live as (...args: unknown[]) => unknown).bind(liveAnalyticsService);
+      }
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+});

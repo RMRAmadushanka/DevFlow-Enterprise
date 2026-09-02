@@ -112,6 +112,9 @@ public class Task extends BaseEntity {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    @Column(name = "backlog_rank", nullable = false)
+    private int backlogRank;
+
     public UUID getProjectId() { return projectId; }
     public void setProjectId(UUID projectId) { this.projectId = projectId; }
     public UUID getOrganizationId() { return organizationId; }
@@ -176,4 +179,6 @@ public class Task extends BaseEntity {
     public void setChecklistTotal(int checklistTotal) { this.checklistTotal = checklistTotal; }
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+    public int getBacklogRank() { return backlogRank; }
+    public void setBacklogRank(int backlogRank) { this.backlogRank = backlogRank; }
 }
